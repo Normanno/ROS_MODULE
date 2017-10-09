@@ -1,0 +1,8 @@
+sgr_project/SmartbandSensors smsensors
+int32 extraversion
+int32 agreebleness
+int32 concientiounsness
+int32 neuroticismi
+int32 openness
+---
+float32 stopdistance
