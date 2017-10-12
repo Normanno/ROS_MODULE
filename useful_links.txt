@@ -1,0 +1,10 @@
+Example programs
+An example set of client programs with a text-based interactive interface for running them is available
+from https://github.com/pengtang/rosaria_client. Read the README file for instructions.
+These example programs show how to publish or subscribe to ROSARIA's topics, and can be used to interactively test or
+demonstrate ROSARIA controlling the robot.
+
+Launch files and other configuration
+A set of configuration files including roslaunch files, URDF, etc is
+available from http://github.com/MobileRobots/amr-ros-config
+
