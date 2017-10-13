@@ -1,0 +1,9 @@
+<!-- PRECOND roscore launched -->
+
+<launch>
+	<!-- roslaunch openni_launch openni.launch -->
+	<include file="$(find openni_launch)/launch/openni.launch" />
+
+	<!-- rosrun rosaria RosAria -->
+	<node pkg="rosaria" type="RosAria" name="RosAria" />
+</launch>

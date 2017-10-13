@@ -1,0 +1,12 @@
+<launch>
+    <!-- creates a fake laser with kinect -->
+    <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan" >
+        <remap from="image" to="/camera/depth/image_raw" />
+    </node>
+
+    <!-- makes a connection between the topic ros, 1.2 indicates the height of kinect respect to the ground -->
+    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher_camera_link" args="0 0 1.2 0 0 0 base_link camera_link 100" />
+
+    <!-- connects the base with the sonar -->
+    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher_sonar_frame" args="0 0 0.2 0 0 0 base_link sonar_frame 100" />
+</launch>
