@@ -33,7 +33,7 @@ class StopDistance(object):
         ET.SubElement(root, "data", index="9", type="int", description="Extraversion").text = req.extraversion
         ET.SubElement(root, "data", index="10", type="int", description="Agreebleness").text = req.agreebleness
         ET.SubElement(root, "data", index="11", type="int", description="Concientiounsness").text = req.concientiounsness
-        ET.SubElement(root, "data", index="12", type="int", description="Neuroticismi").text = req.neuroticism
+        ET.SubElement(root, "data", index="12", type="int", description="Neuroticism").text = req.neuroticism
         ET.SubElement(root, "data", index="13", type="int", description="Openness").text = req.openness
 
         tree = ET.tostring(ET.ElementTree(root))

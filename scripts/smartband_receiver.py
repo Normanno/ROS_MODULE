@@ -4,10 +4,10 @@ from base_class import topics
 from sgr_project.msg import SmartbandSensors
 
 
-class SenseSmartband(base_class):
+class SmartbandReceiver(base_class):
 
     def __init__(self, topics):
-        super(SenseSmartband, self).__init__()
+        super(SmartbandReceiver, self).__init__()
         self.smartband_pub = rospy.Publisher(topics['publishers']['/sgra/smartband'])
         rospy.init_node('smrtbandsensor')
 
