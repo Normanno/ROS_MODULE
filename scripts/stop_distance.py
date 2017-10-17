@@ -24,8 +24,7 @@ class StopDistance(object):
         self.matlab_server_port = '5902'
 
     def get_stop_distance(self, inputs):
-        return MatlabHandler.engine.getStopDistanceSGR(inputs,
-                                                       nargout=1)
+        return MatlabHandler.engine.getStopDistanceSGR(inputs, nargout=1)
 
     def compute(self, req):
 
