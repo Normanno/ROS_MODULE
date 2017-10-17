@@ -6,9 +6,13 @@ from lxml import etree as ET
 from sgr_project.msg import SmartbandSensors
 from sgr_project.srv import ComputeStopDistance
 from std_msgs.msg import *
-
+import matlab.engine
 
 class StopDistance(object):
+    engine = matlab.engine.start_matlab()
+    out = StringIO.StringIO()
+    err = StringIO.StringIO()
+    ret = engine.dec2hex(2 ** 60, stdout=out, stderr=err)
 
     def __init__(self, topics):
         super(StopDistance, self).__init__()
@@ -18,6 +22,10 @@ class StopDistance(object):
         self.smartband_sub = rospy.Subscriber(topics['subscribers']['smartband'], SmartbandSensors, 10)
         self.matlab_server_host = '127.0.0.1'
         self.matlab_server_port = '5902'
+
+    def get_stop_distance(self, inputs):
+        return MatlabHandler.engine.getStopDistanceSGR(inputs,
+                                                       nargout=1)
 
     def compute(self, req):
 
