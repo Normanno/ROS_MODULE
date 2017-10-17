@@ -27,7 +27,6 @@ class StopDistance(object):
         return MatlabHandler.engine.getStopDistanceSGR(inputs, nargout=1)
 
     def compute(self, req):
-
         root = ET.Element('root')
         ET.SubElement(root, "data", index="1", type="float", description="Acc.x").text = req.accx
         ET.SubElement(root, "data", index="2", type="float", description="Acc.y").text = req.accy
