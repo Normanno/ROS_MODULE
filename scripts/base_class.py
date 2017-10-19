@@ -2,17 +2,20 @@
 
 import signal
 import sys
+from sgr_project.msg import Releasers
 
 # subscribers/publishers namespace
 topics = {
     'subscribers': {
         'smartband': '/sgra/smartband',
+        'odometry': '/tracker/markers_array_smoothed',
     },
     'publishers': {
         'smartband': '/sgra/smartband',
-        'stopdistance': '/sgra/stopdistance'
+        'velocity': '/RosAria/cmd_vel',
     }
 }
+
 
 # Base class for common basic operations
 class Base(object):
@@ -26,4 +29,4 @@ class Base(object):
         sys.exit(0)
 
     def stop(self):
-        '''Operations to be perdormed on stop'''
+        '''Operations to be performed on stop'''

@@ -1,0 +1,8 @@
+<launch>
+    <include file="$(find sgr_project)/launch/init.launch" />
+
+    <include file="$(find sgr_project)/launch/tracking.launch" />
+
+    <include file="$(find sgr_project)/launch/smartband.launch" />
+
+</launch>

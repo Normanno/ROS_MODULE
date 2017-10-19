@@ -1,9 +1,0 @@
-<!-- PRECOND: roslaunch tracking detection_and_tracking.launch -->
-
-<launch>
-    <!-- wandering & collision avoidance -->
-    <include file="$(find ROS_MODULE)/launch/wca.launch" />
-
-    <!-- motion tracking -->
-    <node pkg="ROS_MODULE" type="tracking.py" name="tracking" output="screen" />
-</launch>

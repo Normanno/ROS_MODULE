@@ -1,0 +1,8 @@
+<!-- PRECOND: roslaunch tracking detection_and_tracking.launch -->
+
+<launch>
+
+    <!-- launch the tracking node -->
+    <node pkg="sgr_project" type="human_approach.py" name="humanApproach" output="screen" />
+
+</launch>

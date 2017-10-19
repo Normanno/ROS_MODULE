@@ -1,21 +1,24 @@
+#!/usr/bin/env python
+
 import rospy
-import base_class
-from base_class import topics
+from base_class import Base
+from base_class import topics as base_topics
 from sgr_project.msg import SmartbandSensors
 
 
-class SmartbandReceiver(base_class):
+class SmartbandReceiver(Base):
 
     def __init__(self, topics):
         super(SmartbandReceiver, self).__init__()
-        self.smartband_pub = rospy.Publisher(topics['publishers']['/sgra/smartband'])
-        rospy.init_node('smrtbandsensor')
+        self.smartband_pub = rospy.Publisher(topics["publishers"]["smartband"], SmartbandSensors, queue_size=20)
+        rospy.init_node('smrtband', anonymous=True)
 
-    def sense(self):
-        rate = rospy.Rate(10)
+    def sense(self, rate):
+        rate = rospy.Rate(rate)
         while not rospy.is_shutdown():
             #DATI DI PROVA
             #TODO leggere da smartband
+            print 'publishing message'
             msg = SmartbandSensors()
             msg.accx = -0.932617190000000
             msg.accy = -0.0603027300000000
@@ -31,6 +34,7 @@ class SmartbandReceiver(base_class):
 
 if __name__ == '__main__':
     try:
-        sm = SmartbandSensors(topics)
+        sm = SmartbandReceiver(base_topics)
+        sm.sense(10)
     except rospy.ROSInterruptException:
         print 'Smartband sensing finished!'
