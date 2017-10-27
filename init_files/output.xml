@@ -1,10 +1,7 @@
-<root>
-  <data description="Extraversion" index="9" type="int"/>
-  <data description="Extraversion" index="9" type="float"/>
-  <Extraversion description="Extraversion" type="float">0.0</Extraversion>
+<Personality>
   <Extraversion type="float">0.0</Extraversion>
   <Agreebleness type="float">0.0</Agreebleness>
   <Concientiounsness type="float">0.0</Concientiounsness>
   <Neuroticism type="float">0.0</Neuroticism>
   <Openness type="float">0.0</Openness>
-</root>
+</Personality>
