@@ -1,0 +1,3 @@
+int8 human_detected
+int8 near_human
+int8 smartband_detected

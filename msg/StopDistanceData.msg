@@ -1,0 +1,3 @@
+sgr_project/SmartbandSensors sbsensors
+sgr_project/Personality pdata
+float32 velocity

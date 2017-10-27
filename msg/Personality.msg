@@ -1,0 +1,5 @@
+float32 extraversion
+float32 agreebleness
+float32 concientiouness
+float32 neuroticism
+float32 openness

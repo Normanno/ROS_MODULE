@@ -1,10 +1,11 @@
-<!-- PRECOND roscore launched -->
-
 <launch>
-	<!-- roslaunch openni_launch openni.launch -->
-	<!-- <include file="$(find openni_launch)/launch/openni.launch" /> -->
-
 	<!-- rosrun rosaria RosAria -->
 	<node pkg="rosaria" type="RosAria" name="RosAria" />
+
+    <!-- launch smartband receiver -->
+	<node pkg="sgr_project" type="smartband_receiver.py" name="smartband_receiver" output="screen" />
+
+    <!-- launch stop distance calculator -->
+	<node pkg="sgr_project" type="stop_distance.py" name="stopd_distance_service" output="screen" />
 
 </launch>

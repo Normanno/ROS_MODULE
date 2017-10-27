@@ -2,17 +2,17 @@
 
 import signal
 import sys
-from sgr_project.msg import Releasers
 
-# subscribers/publishers namespace
 topics = {
     'subscribers': {
         'smartband': '/sgra/smartband',
         'odometry': '/tracker/markers_array_smoothed',
+        'personality': '/sgra/personality'
     },
     'publishers': {
         'smartband': '/sgra/smartband',
         'velocity': '/RosAria/cmd_vel',
+        'personality': '/sgra/personality'
     }
 }
 
