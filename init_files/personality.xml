@@ -1,17 +1,7 @@
-<Personality>
-  <Extraversion type="float">
-    0.0
-  </Extraversion>
-  <Agreebleness type="float">
-    0.0
-  </Agreebleness>
-  <Concientiounsness type="float">
-    0.0
-  </Concientiounsness>
-  <Neuroticism type="float">
-    0.0
-  </Neuroticism>
-  <Openness type="float">
-    0.0
-  </Openness>
-</Personality>
+<personality>
+  <extraversion type="float">0.0</extraversion>
+  <agreebleness type="float">0.0</agreebleness>
+  <concientiounsness type="float">0.0</concientiounsness>
+  <neuroticism type="float">0.0</neuroticism>
+  <openness type="float">0.0</openness>
+</personality>

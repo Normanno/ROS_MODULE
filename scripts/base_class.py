@@ -7,12 +7,14 @@ topics = {
     'subscribers': {
         'smartband': '/sgra/smartband',
         'odometry': '/tracker/markers_array_smoothed',
-        'personality': '/sgra/personality'
+        'personality_ctrl': '/sgra/control/personality',
+        'velocity_ctrl': '/sgra/control/velocity'
     },
     'publishers': {
         'smartband': '/sgra/smartband',
         'velocity': '/RosAria/cmd_vel',
-        'personality': '/sgra/personality'
+        'personality_ctrl': '/sgra/control/personality',
+        'velocity_ctrl': '/sgra/control/velocity'
     }
 }
 

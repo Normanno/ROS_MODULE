@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+from xml.etree import ElementTree as ET
 from base_class import topics as base_topics
 from sgr_project.srv import ComputeStopDistance
 from visualization_msgs.msg import MarkerArray
@@ -18,7 +19,8 @@ class HumanApproach(Base):
         self.topics = topics
         self.odometry_subscriber = rospy.Subscriber(self.topics["subscribers"]["odometry"], MarkerArray, self.process_odometry)
         self.smartband_subscriber = rospy.Subscriber(topics["subscribers"]["smartband"], SmartbandSensors, self.process_stop_distance)#, 10)
-        self.personality_subscriber = rospy.Subscriber(topics["subscribers"]["personality"], Personality, self.process_personality)
+        self.personality_subscriber = rospy.Subscriber(topics["subscribers"]["personality_ctrl"], Personality, self.process_personality)
+        self.velocity_ctrl_subscriber = rospy.Subscriber(topics["subscribers"]["velocity_ctrl"], Twist, self.process_velocity)
         self.velocity_publisher = rospy.Publisher(self.topics["publishers"]["velocity"], Twist)
         self.humans = 0
         self.human_detected = False
@@ -29,10 +31,37 @@ class HumanApproach(Base):
         self.stop_distance = 1.5 #Minimum stop distance for kinectv1 sensor
         self.approach_linear_velocity = 0.5
         self.approach_angular_velocity = 0.3
+        self.init_parameters()
         rospy.init_node("human_approach", anonymous=True)
 
-    def init_personality(self):
-        #TODO READ FROM FILE
+    def init_parameters(self):
+        velocity_tree = ET.parse('init_files/velocity.xml')
+        personality_tree = ET.parse('init_files/personality.xml')
+        velocity_root = velocity_tree.getroot()
+        personality_root = personality_tree.getroot()
+
+        if velocity_root.find('linear') is not None:
+            self.approach_linear_velocity = float(velocity_root.find('linear').value)
+
+        if velocity_root.find('angular') is not None:
+            self.approach_angular_velocity = float(velocity_root.find('angular').value)
+
+        if personality_root.find('extraversion') is not None:
+            self.personality.extraversion = float(personality_root.find('extraversion').value)
+
+        if personality_root.find('agreebleness') is not None:
+            self.personality.agreebleness = float(personality_root.find('agreebleness').value)
+
+        if personality_root.find('concientiouness') is not None:
+            self.personality.concientiouness = float(personality_root.find('concientiouness').value)
+
+        if personality_root.find('neuroticism') is not None:
+            self.personality.neuroticism = float(personality_root.find('neuroticism').value)
+
+        if personality_root.find('openness') is not None:
+            self.personality.openness = float(personality_root.find('openness').value)
+
+
         self.personality.extraversion = 0.0
         self.personality.agreebleness = 0.0
         self.personality.concientiouness = 0.0
@@ -45,6 +74,10 @@ class HumanApproach(Base):
         self.personality.concientiouness = personality_msg.concientiouness
         self.personality.neuroticism = personality_msg.neuroticism
         self.personality.openness = personality_msg.openness
+
+    def process_velocity(self, velocity_msg):
+        self.approach_linear_velocity = velocity_msg.linear.x
+        self.approach_angular_velocity = velocity_msg.angular.z
 
     def process_odometry(self, odometry):
         if self.humans != len(odometry.markers) and len(odometry.markers) > 0:
@@ -69,7 +102,6 @@ class HumanApproach(Base):
         stop_distance_data.sbsensors = sb_sensors
         stop_distance_data.pdata = self.personality
         stop_distance_data.velocity = self.approach_linear_velocity
-
 
         try:
             compute_stop_distance = rospy.ServiceProxy('compute_stop_distance', ComputeStopDistance)
