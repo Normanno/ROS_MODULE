@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="sgr_project" type="parameters_publisher.py" name="parameters_client" args="$(find sgr_project)/config" output="screen" />
+</launch>

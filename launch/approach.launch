@@ -3,6 +3,6 @@
 <launch>
 
     <!-- launch the tracking node -->
-    <node pkg="sgr_project" type="human_approach.py" name="humanApproach" output="screen" />
+    <node pkg="sgr_project" type="human_approach.py" name="humanApproach" args="$(find sgr_project)/config" output="screen" />
 
 </launch>

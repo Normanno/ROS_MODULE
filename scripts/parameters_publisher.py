@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import rospy
+import sys
+import os
 from xml.etree import ElementTree as ET
 from geometry_msgs.msg import Twist
 from base_class import Base
@@ -21,7 +23,7 @@ class ParametersPublisher(Base):
         "e": "exit"
     }
 
-    def __init__(self, base_topics):
+    def __init__(self, base_topics, conf):
         super(ParametersPublisher, self).__init__()
         self.personality_publisher = rospy.Publisher(base_topics["publishers"]["personality_ctrl"], Personality)
         self.velocity_publisher = rospy.Publisher(base_topics["publishers"]["velocity_ctrl"], Twist)
@@ -34,50 +36,54 @@ class ParametersPublisher(Base):
                 "6": self.display_actual_angular_velocity,
                 "h": self.display_options
             }
+        self.conf_dir = conf
+        if conf[len(conf)-1] != '/':
+            self.conf_dir += '/'
+
         self.velocity = Twist()
         self.personality = Personality()
-        self.linear_velocity = 0.0
-        self.angular_velocity = 0.0
-        self.extraversion = 0.0
-        self.agreebleness = 0.0
-        self.concientiouness = 0.0
-        self.neuroticism = 0.0
-        self.openness = 0.0
-        #TODO READ FROM FILE
         self.init_parameters()
+        rospy.init_node('parameters_publisher', anonymous=True)
 
     def init_parameters(self):
-        velocity_tree = ET.parse('init_files/velocity.xml')
-        personality_tree = ET.parse('init_files/personality.xml')
-        velocity_root = velocity_tree.getroot()
+        if os.path.isfile(self.conf_dir + 'velocity.xml'):
+            velocity_tree = ET.parse(self.conf_dir + 'velocity.xml')
+            velocity_root = velocity_tree.getroot()
+            if velocity_root.find('linear') is not None:
+                self.velocity.linear.x = float(velocity_root.find('linear').text)
+            if velocity_root.find('angular') is not None:
+                self.velocity.angular.z = float(velocity_root.find('angular').text)
+        else:
+            print "Error : Can't find " + self.conf_dir + 'velocity.xml no such file or directory!'
+
+        if not os.path.isfile(self.conf_dir + 'personality.xml'):
+            print "Error : Can't find " + self.conf_dir + 'velocity.xml no such file or directory!'
+
+        personality_tree = ET.parse(self.conf_dir + 'personality.xml')
         personality_root = personality_tree.getroot()
 
-        if velocity_root.find('linear') is not None:
-            self.velocity.linear.x = float(velocity_root.find('linear').value)
-        if velocity_root.find('angular') is not None:
-            self.velocity.angular.z = float(velocity_root.find('angular').value)
-
         if personality_root.find('extraversion') is not None:
-            self.personality.extraversion = float(personality_root.find('extraversion').value)
+            self.personality.extraversion = float(personality_root.find('extraversion').text)
 
         if personality_root.find('agreebleness') is not None:
-            self.personality.agreebleness = float(personality_root.find('agreebleness').value)
+            self.personality.agreebleness = float(personality_root.find('agreebleness').text)
 
         if personality_root.find('concientiouness') is not None:
-            self.personality.concientiouness = float(personality_root.find('concientiouness').value)
+            self.personality.concientiouness = float(personality_root.find('concientiouness').text)
 
         if personality_root.find('neuroticism') is not None:
-            self.personality.neuroticism = float(personality_root.find('neuroticism').value)
+            self.personality.neuroticism = float(personality_root.find('neuroticism').text)
 
         if personality_root.find('openness') is not None:
-            self.personality.openness = float(personality_root.find('openness').value)
+            self.personality.openness = float(personality_root.find('openness').text)
 
     def keyboard_input_loop(self):
         exit_loop = False
         choice = None
         while not exit_loop:
             self.display_options()
-            choice = input("Option: ")
+            choice = str(input("Option: "))
+            print "choice : " + choice +" - "
             if choice in ParametersPublisher.options.keys() and choice != "e":
                 self.options_functions[choice]()
             elif choice == "e":
@@ -122,11 +128,11 @@ class ParametersPublisher(Base):
     def update_personality(self):
         print "***Updating personality parameters***"
         try:
-            extraversion_value = float(input("Extraversion (actual " + str(self.extraversion) + " : "))
-            agreebleness_value = float(input("Agreebleness (actual " + str(self.agreebleness) + " : "))
-            concientiouness_value = float(input("Concientioness (actual " + str(self.concientiouness) + " : "))
-            neuroticism_value = float(input("Neuroticism (actual " + str(self.neuroticism) + " : "))
-            openness_value = float(input("Openness (actual " + str(self.openness) + " : "))
+            extraversion_value = float(input("Extraversion (actual " + str(self.personality.extraversion) + ") : "))
+            agreebleness_value = float(input("Agreebleness (actual " + str(self.personality.agreebleness) + ") : "))
+            concientiouness_value = float(input("Concientioness (actual " + str(self.personality.concientiouness) + ") : "))
+            neuroticism_value = float(input("Neuroticism (actual " + str(self.personality.neuroticism) + ") : "))
+            openness_value = float(input("Openness (actual " + str(self.personality.openness) + ") : "))
         except ValueError:
             print "ERROR: not a number!"
             return
@@ -137,8 +143,6 @@ class ParametersPublisher(Base):
         self.personality.openness = openness_value
         self.personality_publisher.publish(self.personality)
         print "***Parameters successfully updated***"
-
-        #TODO update self values and publish on control topic
 
     def display_actual_personlity(self):
         print "***Actual personality parameters***"
@@ -152,6 +156,8 @@ class ParametersPublisher(Base):
 
 if __name__ == '__main__':
     print "Wellcome"
-    personality_publisher = ParametersPublisher(topics)
+    config_dir = sys.argv[1]
+    personality_publisher = ParametersPublisher(topics, config_dir)
     personality_publisher.keyboard_input_loop()
     print "Good Bye!"
+    #TODO fix linear velocity input

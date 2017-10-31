@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import rospy
+import sys
+import os
 from xml.etree import ElementTree as ET
 from base_class import topics as base_topics
 from sgr_project.srv import ComputeStopDistance
@@ -14,7 +16,7 @@ from base_class import Base
 
 class HumanApproach(Base):
 
-    def __init__(self, topics):
+    def __init__(self, topics, config=''):
         super(HumanApproach, self).__init__()
         self.topics = topics
         self.odometry_subscriber = rospy.Subscriber(self.topics["subscribers"]["odometry"], MarkerArray, self.process_odometry)
@@ -25,48 +27,50 @@ class HumanApproach(Base):
         self.humans = 0
         self.human_detected = False
         self.human_reached = False
+        self.conf_dir = config
+        if config[len(config) - 1] != '/':
+            self.conf_dir += '/'
         self.personality = Personality()
         self.smartband_connected = False
         self.pose = {"x": 0.0, "y": 0.0, "z": 0.0}
-        self.stop_distance = 1.5 #Minimum stop distance for kinectv1 sensor
+        #TODO read it from file
+        self.stop_distance = 0.8 #Minimum stop distance for kinectv1 sensor
         self.approach_linear_velocity = 0.5
         self.approach_angular_velocity = 0.3
         self.init_parameters()
         rospy.init_node("human_approach", anonymous=True)
 
     def init_parameters(self):
-        velocity_tree = ET.parse('init_files/velocity.xml')
-        personality_tree = ET.parse('init_files/personality.xml')
-        velocity_root = velocity_tree.getroot()
+        if os.path.isfile(self.conf_dir + 'velocity.xml'):
+            velocity_tree = ET.parse(self.conf_dir + 'velocity.xml')
+            velocity_root = velocity_tree.getroot()
+            if velocity_root.find('linear') is not None:
+                self.approach_linear_velocity = float(velocity_root.find('linear').text)
+            if velocity_root.find('angular') is not None:
+                self.approach_angular_velocity = float(velocity_root.find('angular').text)
+        else:
+            print "Error : Can't find " + self.conf_dir + 'velocity.xml no such file or directory!'
+
+        if not os.path.isfile(self.conf_dir + 'personality.xml'):
+            print "Error : Can't find " + self.conf_dir + 'velocity.xml no such file or directory!'
+
+        personality_tree = ET.parse(self.conf_dir + 'personality.xml')
         personality_root = personality_tree.getroot()
 
-        if velocity_root.find('linear') is not None:
-            self.approach_linear_velocity = float(velocity_root.find('linear').value)
-
-        if velocity_root.find('angular') is not None:
-            self.approach_angular_velocity = float(velocity_root.find('angular').value)
-
         if personality_root.find('extraversion') is not None:
-            self.personality.extraversion = float(personality_root.find('extraversion').value)
+            self.personality.extraversion = float(personality_root.find('extraversion').text)
 
         if personality_root.find('agreebleness') is not None:
-            self.personality.agreebleness = float(personality_root.find('agreebleness').value)
+            self.personality.agreebleness = float(personality_root.find('agreebleness').text)
 
         if personality_root.find('concientiouness') is not None:
-            self.personality.concientiouness = float(personality_root.find('concientiouness').value)
+            self.personality.concientiouness = float(personality_root.find('concientiouness').text)
 
         if personality_root.find('neuroticism') is not None:
-            self.personality.neuroticism = float(personality_root.find('neuroticism').value)
+            self.personality.neuroticism = float(personality_root.find('neuroticism').text)
 
         if personality_root.find('openness') is not None:
-            self.personality.openness = float(personality_root.find('openness').value)
-
-
-        self.personality.extraversion = 0.0
-        self.personality.agreebleness = 0.0
-        self.personality.concientiouness = 0.0
-        self.personality.neuroticism = 0.0
-        self.personality.openness = 0.0
+            self.personality.openness = float(personality_root.find('openness').text)
 
     def process_personality(self, personality_msg):
         self.personality.extraversion = personality_msg.extraversion
@@ -137,7 +141,8 @@ class HumanApproach(Base):
 
 if __name__ == "__main__":
     try:
-        ha = HumanApproach(base_topics)
+        config_dir = sys.argv[1]
+        ha = HumanApproach(base_topics, config_dir)
         ha.approach()
     except rospy.ROSInterruptException:
         print "aproach interrupt exception"

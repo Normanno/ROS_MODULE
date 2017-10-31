@@ -32,11 +32,11 @@ class StopDistance(object):
         values.append(req.sddata.sbsensors.gyroz)
         values.append(req.sddata.sbsensors.hr)
         values.append(req.sddata.velocity)
-        values.append(req.sddata.extraversion)
-        values.append(req.sddata.agreebleness)
-        values.append(req.sddata.concientiouness)
-        values.append(req.sddata.neuroticism)
-        values.append(req.sddata.openness)
+        values.append(req.sddata.pdata.extraversion)
+        values.append(req.sddata.pdata.agreebleness)
+        values.append(req.sddata.pdata.concientiouness)
+        values.append(req.sddata.pdata.neuroticism)
+        values.append(req.sddata.pdata.openness)
         return engine.getStopDistanceSGR(values, nargout=1)
 
 
