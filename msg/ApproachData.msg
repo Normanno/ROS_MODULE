@@ -1,0 +1,3 @@
+float32 stop_distance
+bool smartband_detected
+bool motors_enabled

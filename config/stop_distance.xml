@@ -1,3 +1,8 @@
 <stop_distance>
-    0.5
+    <minimum>
+        0.8
+    </minimum>
+    <initial>
+        0.8
+    </initial>
 </stop_distance>

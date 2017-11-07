@@ -18,15 +18,12 @@ class SmartbandReceiver(Base):
 
     def __init__(self, topics):
         super(SmartbandReceiver, self).__init__()
-        self.smartband_pub = rospy.Publisher(topics["publishers"]["smartband"], SmartbandSensors, queue_size=20)
+        self.smartband_pub = rospy.Publisher(topics["publishers"]["smartband"], SmartbandSensors, queue_size=10)
         rospy.init_node('smrtband', anonymous=True)
 
     def simulate(self, rate):
         rate = rospy.Rate(rate)
         while not rospy.is_shutdown():
-            #DATI DI PROVA
-            #TODO leggere da smartband
-            print 'publishing message'
             msg = SmartbandSensors()
             msg.accx = -0.932617190000000
             msg.accy = -0.0603027300000000
@@ -35,12 +32,10 @@ class SmartbandReceiver(Base):
             msg.gyroy = -14.2073170700000
             msg.gyroz = -41.3414634100000
             msg.hr = 79
-            msg.velocity = 1
             self.smartband_pub.publish(msg)
             rate.sleep()
 
     def parse(self, message):
-        print 'parsing : '+str(message)
         msg = SmartbandSensors()
         msg.hr = int(message["hr"])
         msg.accx = float(message["acc_x"])

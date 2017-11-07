@@ -10,9 +10,7 @@ class RosSmartbandHandler(tornado.web.RequestHandler):
     def check_and_publish(self):
         #data = json.loads(self.request.body.decode('utf-8'))
         data = json.loads(self.request.body)
-        print "JSON MESSAGE: " + str(data)
-        print data["uname"]
-        print data["pass"]
+        #print "JSON MESSAGE: " + str(data)
         if data["uname"] == "ROS" and data["pass"] == "SGRA_ROS":
             if self.smartband_publisher is not None:
                 self.smartband_publisher.parse_and_publish(data)
@@ -22,11 +20,9 @@ class RosSmartbandHandler(tornado.web.RequestHandler):
             print '**** ERROR: AUTHENTICATION FAILED ****'
 
     def get(self):
-        print "get method"
         self.check_and_publish()
 
     def post(self):
-        print "post method"
         self.check_and_publish()
 
 

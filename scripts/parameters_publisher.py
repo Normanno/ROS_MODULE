@@ -19,6 +19,7 @@ class ParametersPublisher(Base):
         "4": "Display linear velocity",
         "5": "Update angular velocity",
         "6": "Display angular velocity",
+        "s": "Stop the robot (set angular and linear velocity to 0)",
         "h": "Display all options",
         "e": "exit"
     }
@@ -34,6 +35,7 @@ class ParametersPublisher(Base):
                 "4": self.display_actual_linear_velocity,
                 "5": self.update_angular_velocity,
                 "6": self.display_actual_angular_velocity,
+                "s": self.stop_robot,
                 "h": self.display_options
             }
         self.conf_dir = conf
@@ -80,10 +82,10 @@ class ParametersPublisher(Base):
     def keyboard_input_loop(self):
         exit_loop = False
         choice = None
+        self.display_options()
         while not exit_loop:
-            self.display_options()
-            choice = str(input("Option: "))
-            print "choice : " + choice +" - "
+            choice = raw_input("Option: ")
+            choice = str(choice)
             if choice in ParametersPublisher.options.keys() and choice != "e":
                 self.options_functions[choice]()
             elif choice == "e":
@@ -98,7 +100,7 @@ class ParametersPublisher(Base):
         new_linear_velocity = input("Linear velocity (actual"+str(self.velocity.linear.x)+") :")
         try:
             new_linear_velocity_value = float(new_linear_velocity)
-            self.velocity.angular.x = new_linear_velocity_value
+            self.velocity.linear.x = new_linear_velocity_value
         except ValueError:
             print "ERROR:" + str(new_linear_velocity) + " is not a number!"
             return
@@ -120,9 +122,16 @@ class ParametersPublisher(Base):
     def display_actual_angular_velocity(self):
         print "Actual angular velocity : " + str(self.velocity.angular.z)
 
+    def stop_robot(self):
+        self.velocity.linear.x = 0.0
+        self.velocity.angular.z = 0.0
+        self.publish_velocity()
+
     def display_options(self):
         print "Available options: "
-        for k in ParametersPublisher.options.keys():
+        keys = ParametersPublisher.options.keys()
+        keys.sort()
+        for k in keys:
             print "\t-" + k + " : " + ParametersPublisher.options.get(k)
 
     def update_personality(self):

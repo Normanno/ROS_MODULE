@@ -18,7 +18,7 @@ roslaunch tracking detection_and_tracking.launch
 ~~~
 
 # Step 2: Start RosAria and Smartband receiver
-To start RosAria, the smartband receiver and the stop distance calculator node.
+To start RosAria, the smartband receiver and the main control node.
 ~~~
 roslaunch sgr_project init.launch
 ~~~
@@ -38,7 +38,7 @@ Then: <br />
 - (3) Toggle "Start ROS" (this will run a check on the paramaters) 
 - (4) Toggle "Activate" to start sending data to ROS
 
-#Optional step: parameters client
+#Step 5 (Optional): Control client
 If you want to change parameters like linear/angular velocity or personality parameters just run the client with:
 ~~~
 roslaunch sgr_project client.launch
