@@ -21,8 +21,8 @@ class SmartbandReceiver(Base):
         self.smartband_pub = rospy.Publisher(topics["publishers"]["smartband"], SmartbandSensors, queue_size=10)
         rospy.init_node('smrtband', anonymous=True)
 
-    def simulate(self, rate):
-        rate = rospy.Rate(rate)
+    def simulate(self, period):
+        rate = rospy.Rate(period)
         while not rospy.is_shutdown():
             msg = SmartbandSensors()
             msg.accx = -0.932617190000000

@@ -4,6 +4,7 @@ import rospy
 import StringIO
 import os
 import sys
+from base_class import Base
 from xml.etree import ElementTree as ET
 from sgr_project.msg import ApproachData
 from sgr_project.msg import SmartbandSensors
@@ -20,7 +21,7 @@ err = StringIO.StringIO()
 ret = engine.dec2hex(2 ** 60, stdout=out, stderr=err)
 
 
-class StopDistanceCalculator(object):
+class StopDistanceCalculator(Base):
 
     def __init__(self, topics, config=''):
         super(StopDistanceCalculator, self).__init__()
@@ -43,7 +44,8 @@ class StopDistanceCalculator(object):
         self.minimum_stop_distance = 0.0
         self.stop_distance = 0.0
         self.smartband_detected = False
-        self.motors_enabled = True
+        #TODO check if vale change on rosaria connection
+        self.motors_enabled = self.ros_aria_connected
 
         self.smartband_subscriber = rospy.Subscriber(topics["subscribers"]["smartband"],
                                                      SmartbandSensors, self.process_smartband)
@@ -55,7 +57,7 @@ class StopDistanceCalculator(object):
                                                          Bool, self.process_human_reached, queue_size=10)
         self.velocity_subsciber = rospy.Subscriber(topics["subscribers"]["velocity"],
                                                    Twist, self.process_velocity, queue_size=10)
-        self.approach_data_publisher = rospy.Publisher(topics["publishers"]["control"],
+        self.approach_data_publisher = rospy.Publisher(topics["publishers"]["approach"],
                                                        ApproachData, queue_size=10)
         self.init_parameters()
         rospy.init_node("stop_distance_calculator", anonymous=True)
@@ -92,7 +94,6 @@ class StopDistanceCalculator(object):
 
     def process_human_reached(self, human_reached_message):
         self.human_reached = human_reached_message.data
-        print 'human reached '+str(self.human_reached)
 
     def process_smartband(self, smartband_msg):
         self.smartband_sensors = smartband_msg
@@ -112,7 +113,6 @@ class StopDistanceCalculator(object):
         approach_msg = ApproachData()
         approach_msg.stop_distance = self.stop_distance
         approach_msg.smartband_detected = self.smartband_detected
-        approach_msg.motors_enabled = self.motors_enabled
         self.approach_data_publisher.publish(approach_msg)
 
     def smartband_sensors_to_values(self):
@@ -141,6 +141,7 @@ class StopDistanceCalculator(object):
         while not rospy.is_shutdown():
             # if the human is not at the computed stop distance and the motors are enabled
             # then calculate the stop distance
+            print 'motors_enabled '+str(self.motors_enabled)
             if not self.human_reached and self.motors_enabled:
                 # if there is some new data and is not the first start
                 if self.new_personality_data or self.new_smartband_data or self.new_velocity_data:

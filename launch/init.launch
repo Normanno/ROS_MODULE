@@ -6,6 +6,6 @@
 	<node pkg="sgr_project" type="smartband_receiver.py" name="smartband_receiver" output="screen" />
 
     <!-- launch stop distance calculator -->
-	<node pkg="sgr_project" type="stop_distance_calculator.py" name="control_node" args="$(find sgr_project)/config" output="screen" />
+	<node pkg="sgr_project" type="stop_distance_calculator.py" name="stop_distance_calculator" args="$(find sgr_project)/config" output="screen" />
 
 </launch>

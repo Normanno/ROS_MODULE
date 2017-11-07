@@ -2,13 +2,14 @@
 
 import signal
 import sys
+import rosnode
 
 topics = {
     'subscribers': {
         'smartband': '/sgra/smartband',
         'odometry': '/tracker/markers_array_smoothed',
         'personality_ctrl': '/sgra/control/personality',
-        'control': '/sgra/control/main',
+        'approach': '/sgra/control/approach',
         'velocity': '/RosAria/cmd_vel',
         'motors': '/RosAria/motors_state',
         'sonar': '/RosAria/sonar',
@@ -18,7 +19,7 @@ topics = {
     'publishers': {
         'smartband': '/sgra/smartband',
         'velocity': '/RosAria/cmd_vel',
-        'control': '/sgra/control/main',
+        'approach': '/sgra/control/approach',
         'personality_ctrl': '/sgra/control/personality',
         'velocity_ctrl': '/sgra/control/velocity',
         'human_reached': '/sgra/human_reached'
@@ -32,6 +33,8 @@ class Base(object):
     def __init__(self):
         # SIGINT handler
         signal.signal(signal.SIGINT, self.signal_handler)
+        nodes = rosnode.get_node_names()
+        self.ros_aria_connected = True if '/RosAria' in nodes else False
 
     def signal_handler(self, signal, frame):
         self.stop()
