@@ -18,7 +18,8 @@ class SmartbandReceiver(Base):
 
     def __init__(self, topics):
         super(SmartbandReceiver, self).__init__()
-        self.smartband_pub = rospy.Publisher(topics["publishers"]["smartband"], SmartbandSensors, queue_size=10)
+        self.smartband_pub = rospy.Publisher(topics["publishers"]["smartband"],
+                                             SmartbandSensors, queue_size=10)
         rospy.init_node('smrtband', anonymous=True)
 
     def simulate(self, period):

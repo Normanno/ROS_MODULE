@@ -4,12 +4,15 @@ import rospy
 import StringIO
 import os
 import sys
+import time
+from multiprocessing import Process, Lock
 from base_class import Base
 from xml.etree import ElementTree as ET
 from sgr_project.msg import ApproachData
 from sgr_project.msg import SmartbandSensors
 from sgr_project.msg import Personality
 from std_msgs.msg import Bool
+from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist
 from base_class import topics as base_topics
 import matlab.engine
@@ -35,6 +38,7 @@ class StopDistanceCalculator(Base):
 
         self.new_smartband_data = False
         self.smartband_sensors = SmartbandSensors()
+        self.smartband_data_last_timestamp = 0
         self.new_personality_data = False
         self.personality = Personality()
         self.new_velocity_data = False
@@ -44,21 +48,23 @@ class StopDistanceCalculator(Base):
         self.minimum_stop_distance = 0.0
         self.stop_distance = 0.0
         self.smartband_detected = False
-        #TODO check if vale change on rosaria connection
         self.motors_enabled = self.ros_aria_connected
 
         self.smartband_subscriber = rospy.Subscriber(topics["subscribers"]["smartband"],
-                                                     SmartbandSensors, self.process_smartband)
+                                                     SmartbandSensors, self.process_smartband,
+                                                     queue_size=5)
         self.motors_subscriber = rospy.Subscriber(topics["subscribers"]["motors"],
-                                                  Bool, self.process_motors)
+                                                  Bool, self.process_motors, queue_size=1)
         self.personality_subscriber = rospy.Subscriber(topics["subscribers"]["personality_ctrl"],
                                                        Personality, self.process_personality)
         self.human_reached_subscriber = rospy.Subscriber(topics["subscribers"]["human_reached"],
-                                                         Bool, self.process_human_reached, queue_size=10)
+                                                         Bool, self.process_human_reached, queue_size=1)
         self.velocity_subsciber = rospy.Subscriber(topics["subscribers"]["velocity"],
-                                                   Twist, self.process_velocity, queue_size=10)
-        self.approach_data_publisher = rospy.Publisher(topics["publishers"]["approach"],
-                                                       ApproachData, queue_size=10)
+                                                   Twist, self.process_velocity, queue_size=1)
+        self.smartband_state_publisher = rospy.Publisher(topics["publishers"]["smartband_state"],
+                                                         Bool, queue_size=1)
+        self.stop_distance_publisher = rospy.Publisher(topics["publishers"]["stop_distance"],
+                                                       Float32, queue_size=1)
         self.init_parameters()
         rospy.init_node("stop_distance_calculator", anonymous=True)
 
@@ -96,8 +102,11 @@ class StopDistanceCalculator(Base):
         self.human_reached = human_reached_message.data
 
     def process_smartband(self, smartband_msg):
+        print 'smartband'
         self.smartband_sensors = smartband_msg
         self.new_smartband_data = True
+        self.smartband_detected = True
+        self.smartband_data_last_timestamp = time.time()
 
     def process_velocity(self, velocity_msg):
         #Takes linear velocity
@@ -108,12 +117,6 @@ class StopDistanceCalculator(Base):
     def process_personality(self, personality_msg):
         self.personality = personality_msg
         self.new_personality_data = True
-
-    def publish_approach_msg(self):
-        approach_msg = ApproachData()
-        approach_msg.stop_distance = self.stop_distance
-        approach_msg.smartband_detected = self.smartband_detected
-        self.approach_data_publisher.publish(approach_msg)
 
     def smartband_sensors_to_values(self):
         values = list()
@@ -132,42 +135,62 @@ class StopDistanceCalculator(Base):
         values.append(self.personality.openness)
         return values
 
+    def smartband_state_publish(self):
+        msg = Bool()
+        msg.data = self.smartband_detected
+        self.smartband_state_publisher.publish(msg)
+
+    def matlab_calculate_and_publish(self, values):
+        new_stop_distance = engine.getStopDistanceSGR(values, nargout=1)
+        if new_stop_distance >= self.minimum_stop_distance:
+            self.stop_distance = new_stop_distance
+        else:
+            self.stop_distance = self.minimum_stop_distance
+        msg = Float32()
+        msg.data = self.stop_distance
+        self.stop_distance_publisher.publish(msg)
+
+    def check_new_data(self):
+        return self.new_personality_data or self.new_smartband_data or self.new_velocity_data
+
     def calc_cycle(self):
         rate = 10
         ros_rate = rospy.Rate(10)
         counter = 0
-        # first start message
-        self.publish_approach_msg()
+        last_smartband_check = 0
+        print "starting calculator cycle"
+        if not self.smartband_detected:
+            print "** Smartband : disconnected **"
         while not rospy.is_shutdown():
+            # if there is no data for one second, it is assumed that
+            # the smartband is disconnected
+            print " counter " +str(counter)
+            if counter >= (rate) :
+                if self.smartband_detected and not self.new_smartband_data:
+                    print "** Smartband : disconnected **"
+                    self.smartband_detected = False
+
+            self.smartband_state_publish()
             # if the human is not at the computed stop distance and the motors are enabled
             # then calculate the stop distance
-            print 'motors_enabled '+str(self.motors_enabled)
-            if not self.human_reached and self.motors_enabled:
+            if not self.human_reached and self.motors_enabled and self.check_new_data():
                 # if there is some new data and is not the first start
-                if self.new_personality_data or self.new_smartband_data or self.new_velocity_data:
-                    self.smartband_detected = self.smartband_detected or self.new_smartband_data
-                    self.new_velocity_data = False
-                    self.new_personality_data = False
-                    self.new_smartband_data = False
-                    values = self.smartband_sensors_to_values()
-                    #Calculate stop distance with matlab engine
-                    new_stop_distance = engine.getStopDistanceSGR(values, nargout=1)
-                    #Due to kinect v1 limitations, there is a minimum stop distance
-                    if new_stop_distance >= self.minimum_stop_distance:
-                        self.stop_distance = new_stop_distance
-                    else:
-                        self.stop_distance = self.minimum_stop_distance
+                #print str(self.new_personality_data) + " - " + str(self.new_smartband_data) + " - " + str(self.new_velocity_data)
+                #if self.smartband_detected != self.smartband_check():
+                if counter > 0 and self.smartband_detected:
+                    print "** Smartband : connected **"
                     counter = 0
-                    self.publish_approach_msg()
-                # if there is no new data
-                else:
-                    counter += 1
-                    # if there is no data for one second, it is assumed that
-                    # the smartband is disconnected
-                    if counter >= rate:
-                        self.smartband_detected = False
-                        self.publish_approach_msg()
-                        counter = rate
+
+                self.new_velocity_data = False
+                self.new_personality_data = False
+                self.new_smartband_data = False
+                values = self.smartband_sensors_to_values()
+                self.matlab_calculate_and_publish(values)
+
+            elif self.motors_enabled and last_smartband_check == self.smartband_data_last_timestamp:
+                counter += 1
+
+            last_smartband_check = self.smartband_data_last_timestamp
 
             ros_rate.sleep()
 
