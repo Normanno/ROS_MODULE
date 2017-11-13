@@ -11,7 +11,7 @@ topics = {
         'personality_ctrl': '/sgra/control/personality',
         'approach': '/sgra/control/approach',
         'smartband_state': '/sgra/control/smartband_state',
-        'stop_distance': '/sgra/control/stop_distance',
+        'stop_distance': '/sgra/stop_distance',
         'velocity': '/RosAria/cmd_vel',
         'motors': '/RosAria/motors_state',
         'sonar': '/RosAria/sonar',
@@ -23,7 +23,7 @@ topics = {
         'velocity': '/RosAria/cmd_vel',
         'approach': '/sgra/control/approach',
         'smartband_state': '/sgra/control/smartband_state',
-        'stop_distance': '/sgra/control/stop_distance',
+        'stop_distance': '/sgra/stop_distance',
         'personality_ctrl': '/sgra/control/personality',
         'velocity_ctrl': '/sgra/control/velocity',
         'human_reached': '/sgra/human_reached'

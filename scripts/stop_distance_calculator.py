@@ -5,10 +5,8 @@ import StringIO
 import os
 import sys
 import time
-from multiprocessing import Process, Lock
 from base_class import Base
 from xml.etree import ElementTree as ET
-from sgr_project.msg import ApproachData
 from sgr_project.msg import SmartbandSensors
 from sgr_project.msg import Personality
 from std_msgs.msg import Bool
@@ -76,8 +74,8 @@ class StopDistanceCalculator(Base):
                 self.personality.extraversion = float(personality_root.find('extraversion').text)
             if personality_root.find('agreebleness') is not None:
                 self.personality.agreebleness = float(personality_root.find('agreebleness').text)
-            if personality_root.find('concientiouness') is not None:
-                self.personality.concientiouness = float(personality_root.find('concientiouness').text)
+            if personality_root.find('concientiounsness') is not None:
+                self.personality.concientiouness = float(personality_root.find('concientiounsness').text)
             if personality_root.find('neuroticism') is not None:
                 self.personality.neuroticism = float(personality_root.find('neuroticism').text)
             if personality_root.find('openness') is not None:
@@ -102,7 +100,6 @@ class StopDistanceCalculator(Base):
         self.human_reached = human_reached_message.data
 
     def process_smartband(self, smartband_msg):
-        print 'smartband'
         self.smartband_sensors = smartband_msg
         self.new_smartband_data = True
         self.smartband_detected = True
@@ -113,6 +110,7 @@ class StopDistanceCalculator(Base):
         if self.velocity != velocity_msg.linear.x:
             self.velocity = velocity_msg.linear.x
             self.new_velocity_data = True
+            print ' new velocity '+str(self.velocity)
 
     def process_personality(self, personality_msg):
         self.personality = personality_msg
@@ -142,10 +140,15 @@ class StopDistanceCalculator(Base):
 
     def matlab_calculate_and_publish(self, values):
         new_stop_distance = engine.getStopDistanceSGR(values, nargout=1)
+
+        if new_stop_distance != self.stop_distance:
+            print 'sd ' + str(self.stop_distance) + ' -> ' + str(new_stop_distance)
+
         if new_stop_distance >= self.minimum_stop_distance:
             self.stop_distance = new_stop_distance
         else:
             self.stop_distance = self.minimum_stop_distance
+
         msg = Float32()
         msg.data = self.stop_distance
         self.stop_distance_publisher.publish(msg)
@@ -164,7 +167,6 @@ class StopDistanceCalculator(Base):
         while not rospy.is_shutdown():
             # if there is no data for one second, it is assumed that
             # the smartband is disconnected
-            print " counter " +str(counter)
             if counter >= (rate) :
                 if self.smartband_detected and not self.new_smartband_data:
                     print "** Smartband : disconnected **"
