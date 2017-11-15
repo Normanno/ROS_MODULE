@@ -3,6 +3,7 @@
 import rospy
 import sys
 import os
+import time
 from xml.etree import ElementTree as ET
 from geometry_msgs.msg import Twist
 from base_class import Base
@@ -19,6 +20,7 @@ class ParametersPublisher(Base):
         "4": "Display linear velocity",
         "5": "Update angular velocity",
         "6": "Display angular velocity",
+        "b": "Robot go back! (0.2 m/s for 1 second",
         "s": "Stop the robot (set angular and linear velocity to 0)",
         "h": "Display all options",
         "e": "exit"
@@ -35,6 +37,7 @@ class ParametersPublisher(Base):
                 "4": self.display_actual_linear_velocity,
                 "5": self.update_angular_velocity,
                 "6": self.display_actual_angular_velocity,
+                "b": self.go_back,
                 "s": self.stop_robot,
                 "h": self.display_options
             }
@@ -121,6 +124,13 @@ class ParametersPublisher(Base):
 
     def display_actual_angular_velocity(self):
         print "Actual angular velocity : " + str(self.velocity.angular.z)
+
+    def go_back(self):
+        self.velocity.linear.x = -0.2
+        self.publish_velocity()
+        time.sleep(1)
+        self.stop_robot()
+
 
     def stop_robot(self):
         self.velocity.linear.x = 0.0

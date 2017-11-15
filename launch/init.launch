@@ -1,6 +1,9 @@
 <launch>
 	<!-- rosrun rosaria RosAria -->
-	<node pkg="rosaria" type="RosAria" name="RosAria" />
+
+	<node pkg="rosaria" type="RosAria" name="RosAria" output="screen">
+	      <param name="trans_decel" type="double" value="0.5" />
+	</node>
 
     <!-- launch smartband receiver -->
 	<node pkg="sgr_project" type="smartband_receiver.py" name="smartband_receiver" output="screen" />

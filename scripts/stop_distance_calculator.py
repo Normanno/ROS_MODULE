@@ -110,7 +110,6 @@ class StopDistanceCalculator(Base):
         if self.velocity != velocity_msg.linear.x:
             self.velocity = velocity_msg.linear.x
             self.new_velocity_data = True
-            print ' new velocity '+str(self.velocity)
 
     def process_personality(self, personality_msg):
         self.personality = personality_msg
@@ -140,9 +139,6 @@ class StopDistanceCalculator(Base):
 
     def matlab_calculate_and_publish(self, values):
         new_stop_distance = engine.getStopDistanceSGR(values, nargout=1)
-
-        if new_stop_distance != self.stop_distance:
-            print 'sd ' + str(self.stop_distance) + ' -> ' + str(new_stop_distance)
 
         if new_stop_distance >= self.minimum_stop_distance:
             self.stop_distance = new_stop_distance
@@ -177,8 +173,6 @@ class StopDistanceCalculator(Base):
             # then calculate the stop distance
             if not self.human_reached and self.motors_enabled and self.check_new_data():
                 # if there is some new data and is not the first start
-                #print str(self.new_personality_data) + " - " + str(self.new_smartband_data) + " - " + str(self.new_velocity_data)
-                #if self.smartband_detected != self.smartband_check():
                 if counter > 0 and self.smartband_detected:
                     print "** Smartband : connected **"
                     counter = 0

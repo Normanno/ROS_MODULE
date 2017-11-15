@@ -4,12 +4,16 @@ import rospy
 import sys
 import os
 import time
+from math import pow
+from datetime import datetime
+
 from xml.etree import ElementTree as ET
 from base_class import topics as base_topics
 from visualization_msgs.msg import MarkerArray
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from std_msgs.msg import Float32
+from std_srvs.srv import Empty
 
 from base_class import Base
 
@@ -20,7 +24,7 @@ class HumanApproach(Base):
         super(HumanApproach, self).__init__()
         self.topics = topics
         self.odometry_subscriber = rospy.Subscriber(self.topics["subscribers"]["odometry"],
-                                                    MarkerArray, self.process_odometry, queue_size=10)
+                                                    MarkerArray, self.process_odometry, queue_size=1)
         self.velocity_ctrl_subscriber = rospy.Subscriber(topics["subscribers"]["velocity_ctrl"],
                                                          Twist, self.process_velocity, queue_size=10)
         self.motors_subscriber = rospy.Subscriber(topics["subscribers"]["motors"],
@@ -33,7 +37,6 @@ class HumanApproach(Base):
                                                          Bool, self.process_smartband_state, queue_size=1)
         self.stop_distance_subscriber = rospy.Subscriber(topics["publishers"]["stop_distance"],
                                                          Float32, self.process_stop_distance, queue_size=1)
-
         self.conf_dir = config
         if config[len(config) - 1] != '/':
             self.conf_dir += '/'
@@ -42,17 +45,21 @@ class HumanApproach(Base):
 
         self.humans = 0
         self.human_detected = False
-        self.human_reached = False
+        self.human_reached = True
         self.smartband_connected = False
         self.motors_enabled = self.ros_aria_connected
         self.pose = {"x": 0.0, "y": 0.0, "z": 0.0}
         self.stop_distance = 0.0
-        self.stop_distance_velocty_adaptation = 0.0
+        self.stop_distance_velocity_adaptation = 0.0
         self.approach_linear_velocity = 0.0
         self.approach_angular_velocity = 0.0
-        self.actual_velociy = Twist()
+        self.actual_velocity = Twist()
+
+        self.stop_detected_time = 0.0
+        self.null_velocity_time = 0.0
 
         self.init_parameters()
+
         rospy.init_node("human_approach", anonymous=True)
 
     def init_parameters(self):
@@ -90,15 +97,20 @@ class HumanApproach(Base):
         self.stop_distance = msg.data
 
     def process_velocity(self, velocity_msg):
+        #TODO take this value with dynamic_reconfigure
+        decelleration = 0.5
         self.approach_linear_velocity = velocity_msg.linear.x
         self.approach_angular_velocity = velocity_msg.angular.z
-        # Stop distance adaptation based on linear velocity * (vel_update_freq + time_to_publish)
-        self.stop_distance_velocty_adaptation = self.approach_linear_velocity * 0.15
-        '''
-        print 'velocity adaptation '+str(self.stop_distance_velocty_adaptation)
-        print 'stop distance ' + str(self.stop_distance)
-        print 'stop distance adaptd' + str(self.stop_distance + self.stop_distance_velocty_adaptation)
-        '''
+        # distance traveled by the robot in 0.1 seconds (RosAria update frequency)
+        distance = self.approach_linear_velocity * 0.15
+        # Stop distance adaptation sum of :
+        # - uniform decelleration distance to stop = v^2 / 2*decelleration
+        # - robot walkable distance for late frame
+        self.stop_distance_velocity_adaptation = pow(self.approach_linear_velocity, 2) / (2 * decelleration)
+        self.stop_distance_velocity_adaptation += 2 * distance
+        if not self.human_reached:
+            self.actual_velocity.linear.x = self.approach_linear_velocity
+            self.velocity_publisher.publish(self.actual_velocity)
 
     def process_odometry(self, odometry):
         if self.humans < len(odometry.markers):
@@ -126,50 +138,59 @@ class HumanApproach(Base):
         self.human_reached_publisher.publish(new_msg)
 
     def near_human(self):
-        #print "x= " + str(self.pose["x"]) + " sd= " + str(self.stop_distance) + " adapt= " + str(self.stop_distance_velocty_adaptation)
-        return self.pose["x"] <= (self.stop_distance + self.stop_distance_velocty_adaptation)
+        return self.pose["x"] <= (self.stop_distance + self.stop_distance_velocity_adaptation)
 
     def approach(self):
-        rate = rospy.Rate(10)
-        state_change = False
+        frequency = 60
+        rate = rospy.Rate(frequency)
+        velocity_update = False
+        stop = False
         counter = 0
-        state_change = False
         print "** Smartband : disconnected **"
         while not rospy.is_shutdown():
-            #print str(self.smartband_connected) +'-'+ str(self.motors_enabled) + '-'+ str(self.human_detected)
-            if self.smartband_connected and self.motors_enabled and self.human_detected:
+            if self.smartband_connected and self.human_detected:
+                stop = False
                 if counter == 10:
-                    #print "x " + str(self.pose["x"]) + " - sd " + str(self.stop_distance)
                     counter = 0
                 counter += 1
-
                 # ROSAria mantain the velocity
                 # move toward human
                 if not self.near_human():
                     if self.human_reached:
                         print "**** Human detected: MOVING ****"
-                    self.human_reached = False
-                    self.actual_velociy.linear.x = self.approach_linear_velocity
-
+                        self.human_reached = False
+                        self.actual_velocity.linear.x = self.approach_linear_velocity
+                        velocity_update = True
                 elif self.near_human():
+                    print "not near"
                     if not self.human_reached:
                         print "**** Human detected: REACHED ****"
-                        print "x " + str(self.pose["x"]) + " - sd " + str(self.stop_distance)
-                    self.human_reached = True
-                    self.actual_velociy.linear.x = 0.0
+                        stop_distance_log_msg = "x " + str(self.pose["x"]) + " - sd " + str(self.stop_distance) + " - " + str(self.stop_distance_velocity_adaptation)
+                        rospy.loginfo("TIME [" + str() + "]" + stop_distance_log_msg)
+                        self.human_reached = True
+                        self.actual_velocity.linear.x = 0.0
+                        velocity_update = True
                 # turn toward human
-                self.actual_velociy.angular.z = min(1.0, self.pose["y"]) * self.approach_angular_velocity
-            elif self.smartband_connected and self.motors_enabled and not self.human_detected:
+                new_angular_velocity = min(1.0, self.pose["y"]) * self.approach_angular_velocity
+                if new_angular_velocity != self.actual_velocity.angular.z:
+                    self.actual_velocity.angular.z = new_angular_velocity
+                    velocity_update = True
+            elif self.smartband_connected and not self.human_detected:
+                stop = False
                 # turn around looking for a human
-                self.actual_velociy.linear.x = 0.0
-                self.actual_velociy.angular.z = self.approach_angular_velocity
+                self.actual_velocity.linear.x = 0.0
+                self.actual_velocity.angular.z = self.approach_angular_velocity
+                velocity_update = True
             # if smartband is not connected or motors aren't enables
-            else:
-                self.actual_velociy.angular.z = 0.0
-                self.actual_velociy.linear.x = 0.0
+            elif not self.smartband_connected and not stop:
+                self.actual_velocity.angular.z = 0.0
+                self.actual_velocity.linear.x = 0.0
+                velocity_update = True
+                stop = True
 
-            if self.motors_enabled:
-                self.velocity_publisher.publish(self.actual_velociy)
+            if velocity_update:
+                self.velocity_publisher.publish(self.actual_velocity)
+                velocity_update = False
 
             self.publish_human_reached()
             rate.sleep()
