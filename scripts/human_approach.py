@@ -27,14 +27,12 @@ class HumanApproach(Base):
                                                     MarkerArray, self.process_odometry, queue_size=1)
         self.velocity_ctrl_subscriber = rospy.Subscriber(topics["subscribers"]["velocity_ctrl"],
                                                          Twist, self.process_velocity, queue_size=10)
-        self.motors_subscriber = rospy.Subscriber(topics["subscribers"]["motors"],
-                                                  Bool, self.process_motors, queue_size=10)
         self.velocity_publisher = rospy.Publisher(self.topics["publishers"]["velocity"],
                                                   Twist, queue_size=1)
         self.human_reached_publisher = rospy.Publisher(self.topics["publishers"]["human_reached"],
                                                        Bool, queue_size=10)
         self.smartband_state_subscriber = rospy.Subscriber(topics["publishers"]["smartband_state"],
-                                                         Bool, self.process_smartband_state, queue_size=1)
+                                                           Bool, self.process_smartband_state, queue_size=1)
         self.stop_distance_subscriber = rospy.Subscriber(topics["publishers"]["stop_distance"],
                                                          Float32, self.process_stop_distance, queue_size=1)
         self.conf_dir = config
@@ -47,7 +45,7 @@ class HumanApproach(Base):
         self.human_detected = False
         self.human_reached = True
         self.smartband_connected = False
-        self.motors_enabled = self.ros_aria_connected
+        self.rosaria_connected = self.ros_aria_connected
         self.pose = {"x": 0.0, "y": 0.0, "z": 0.0}
         self.stop_distance = 0.0
         self.stop_distance_velocity_adaptation = 0.0
@@ -80,9 +78,6 @@ class HumanApproach(Base):
                 self.stop_distance = float(stop_distance_root.find('initial').text)
         else:
             print "Error : Can't find " + self.stop_distance_file_path + 'no such file or directory!'
-
-    def process_motors(self, motors_msg):
-        self.motors_enabled = motors_msg.data
 
     def process_smartband_state(self, msg):
         if self.smartband_connected and not msg.data:
@@ -146,6 +141,8 @@ class HumanApproach(Base):
         velocity_update = False
         stop = False
         counter = 0
+        if not self.ros_aria_connected:
+            print '*** RosAria : disconnected ***'
         print "** Smartband : disconnected **"
         while not rospy.is_shutdown():
             if self.smartband_connected and self.human_detected:

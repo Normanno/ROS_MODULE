@@ -138,7 +138,7 @@ class StopDistanceCalculator(Base):
         self.smartband_state_publisher.publish(msg)
 
     def matlab_calculate_and_publish(self, values):
-        new_stop_distance = engine.getStopDistanceSGR(values, nargout=1)
+        new_stop_distance = engine.getStopDistanceSGRSVM(values, nargout=1)
 
         if new_stop_distance >= self.minimum_stop_distance:
             self.stop_distance = new_stop_distance
