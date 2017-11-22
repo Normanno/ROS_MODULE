@@ -4,7 +4,7 @@ function [ resultsF] = getStopDistanceXRun( inputs, numClasses,  SVM, anfis )
 %Conscientiousness	Neuroticism	Openness
 
 resultsClassifier=testSVM(SVM, numClasses, inputs(:,1:8));
-    resultsLowLevel=resultsClassifier';
+resultsLowLevel=resultsClassifier';
 
 t=[resultsLowLevel inputs(:, 8:13)];
 

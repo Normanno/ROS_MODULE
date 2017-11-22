@@ -116,20 +116,21 @@ class StopDistanceCalculator(Base):
         self.new_personality_data = True
 
     def smartband_sensors_to_values(self):
+
         values = list()
-        values.append(self.smartband_sensors.accx)
-        values.append(self.smartband_sensors.accy)
-        values.append(self.smartband_sensors.accz)
-        values.append(self.smartband_sensors.gyrox)
-        values.append(self.smartband_sensors.gyroy)
-        values.append(self.smartband_sensors.gyroz)
-        values.append(self.smartband_sensors.hr)
-        values.append(self.velocity)
-        values.append(self.personality.extraversion)
-        values.append(self.personality.agreebleness)
-        values.append(self.personality.concientiouness)
-        values.append(self.personality.neuroticism)
-        values.append(self.personality.openness)
+        values.append(float(self.smartband_sensors.accx))
+        values.append(float(self.smartband_sensors.accy))
+        values.append(float(self.smartband_sensors.accz))
+        values.append(float(self.smartband_sensors.gyrox))
+        values.append(float(self.smartband_sensors.gyroy))
+        values.append(float(self.smartband_sensors.gyroz))
+        values.append(float(self.smartband_sensors.hr))
+        values.append(float(self.velocity))
+        values.append(float(self.personality.extraversion))
+        values.append(float(self.personality.agreebleness))
+        values.append(float(self.personality.concientiouness))
+        values.append(float(self.personality.neuroticism))
+        values.append(float(self.personality.openness))
         return values
 
     def smartband_state_publish(self):
