@@ -10,7 +10,5 @@ t=[resultsLowLevel inputs(:, 8:13)];
 
 resultsF=evalfis(t,anfis);
 
-
-
 end
 
