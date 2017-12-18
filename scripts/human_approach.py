@@ -159,7 +159,6 @@ class HumanApproach(Base):
                         self.actual_velocity.linear.x = self.approach_linear_velocity
                         velocity_update = True
                 elif self.near_human():
-                    print "not near"
                     if not self.human_reached:
                         print "**** Human detected: REACHED ****"
                         stop_distance_log_msg = "x " + str(self.pose["x"]) + " - sd " + str(self.stop_distance) + " - " + str(self.stop_distance_velocity_adaptation)
@@ -199,4 +198,4 @@ if __name__ == "__main__":
         ha = HumanApproach(base_topics, config_dir)
         ha.approach()
     except rospy.ROSInterruptException:
-        print "aproach interrupt exception"
+        print "Aproach interrupt exception"
