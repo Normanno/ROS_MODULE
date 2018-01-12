@@ -13,10 +13,11 @@ from visualization_msgs.msg import MarkerArray
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from std_msgs.msg import Float32
+from std_msgs.msg import Empty
 from std_srvs.srv import Empty
 
 from base_class import Base
-
+from sensor_msgs.msg import PointCloud
 
 class HumanApproach(Base):
 
@@ -25,10 +26,14 @@ class HumanApproach(Base):
         self.topics = topics
         self.odometry_subscriber = rospy.Subscriber(self.topics["subscribers"]["odometry"],
                                                     MarkerArray, self.process_odometry, queue_size=1)
+        self.sonar_subscriber = rospy.Subscriber(self.topics["subscribers"]["sonar"], PointCloud,
+                                                 self.process_sonar, queue_size=3)
         self.velocity_ctrl_subscriber = rospy.Subscriber(topics["subscribers"]["velocity_ctrl"],
                                                          Twist, self.process_velocity, queue_size=10)
         self.adaptation_subscriber = rospy.Subscriber(topics['subscribers']['adaptation_ctrl'],
                                                       Bool, self.process_adaptation, queue_size=1)
+        self.restart_subscriber = rospy.Subscriber(topics['subscribers']['approach_ctrl'],
+                                                   Empty, self.restart_approach(), queue_size=1)
         self.velocity_publisher = rospy.Publisher(self.topics["publishers"]["velocity"],
                                                   Twist, queue_size=1)
         self.human_reached_publisher = rospy.Publisher(self.topics["publishers"]["human_reached"],
@@ -49,6 +54,8 @@ class HumanApproach(Base):
         self.smartband_connected = False
         self.rosaria_connected = self.ros_aria_connected
         self.pose = {"x": 0.0, "y": 0.0, "z": 0.0}
+        self.front_sonar = {"l": None, "r": None}
+        self.front_obstacle = False
         self.stop_distance = 0.0
         self.stop_distance_velocity_delta = 0.0
         self.adaptation_enabled = False
@@ -84,6 +91,10 @@ class HumanApproach(Base):
                 self.stop_distance = float(stop_distance_root.find('initial').text)
         else:
             print "Error : Can't find " + self.stop_distance_file_path + 'no such file or directory!'
+
+    def restart_approach(self, empty_msg):
+        if self.human_reached:
+            self.human_reached = False
 
     def process_smartband_state(self, msg):
         if self.smartband_connected and not msg.data:
@@ -126,6 +137,10 @@ class HumanApproach(Base):
             self.pose["y"] = 0.0
             self.pose["z"] = 0.0
 
+    def process_sonar(self, sonar):
+        self.front_sonar["l"] = sonar[3].x
+        self.front_sonar["r"] = sonar[4].x
+
     def process_adaptation(self, adaptation):
         self.adaptation_enabled = adaptation.data
 
@@ -148,7 +163,15 @@ class HumanApproach(Base):
         return update
 
     def near_human(self):
+        # if the detected pose is range or the sonar detect an obstacle
         return self.pose["x"] <= (self.stop_distance + self.stop_distance_velocity_delta)
+
+    def detect_front_obstacle(self):
+        evaluate = lambda x: x < self.stop_distance + self.stop_distance_velocity_delta
+        self.front_obstacle = self.front_sonar["l"] is not None and self.front_sonar["r"] is not None and \
+                              (evaluate(self.front_sonar["l"]) or evaluate(self.front_sonar["r"]))
+        self.front_sonar["l"] = None
+        self.front_sonar["r"] = None
 
     def autonomous_movement(self):
         return self.autonomous or (not self.autonomous and not self.human_reached)
@@ -159,6 +182,9 @@ class HumanApproach(Base):
     def look_around(self):
         return self.autonomous_movement() and self.smartband_connected and not self.human_detected
 
+    def stop_there(self):
+        return self.autonomous_movement() and not self.smartband_connected
+
     def approach(self):
         frequency = 60
         rate = rospy.Rate(frequency)
@@ -168,18 +194,19 @@ class HumanApproach(Base):
             print '*** RosAria : disconnected ***'
         print "** Smartband : disconnected **"
         while not rospy.is_shutdown():
+            self.detect_front_obstacle()
             if self.can_move():
                 if counter == 10:
                     counter = 0
                 counter += 1
                 # ROSAria mantain the velocity
                 # move toward human
-                if not self.near_human():
+                if not self.near_human() and not self.front_obstacle:
                     if self.human_reached:
                         print "**** Human detected: MOVING ****"
                         self.human_reached = False
                         velocity_update = self.update_velocity(self.approach_linear_velocity, self.actual_velocity.angular.z)
-                elif self.near_human():
+                elif self.near_human() or self.front_obstacle:
                     if not self.human_reached:
                         print "**** Human detected: REACHED ****"
                         stop_distance_log_msg = "x " + str(self.pose["x"]) + " - sd " + str(self.stop_distance) + " - " + str(self.stop_distance_velocity_delta)
@@ -189,11 +216,11 @@ class HumanApproach(Base):
                 # turn toward human
                 new_angular_velocity = min(1.0, self.pose["y"]) * self.approach_angular_velocity
                 velocity_update = velocity_update or self.update_velocity(self.actual_velocity.linear.x, new_angular_velocity)
-            elif self.look_around():
+            elif self.look_around() and not self.front_obstacle:
                 # turn around looking for a human
                 velocity_update = self.update_velocity(0.0, self.approach_angular_velocity)
             # if smartband is not connected
-            elif not self.smartband_connected:
+            elif self.stop_there() or self.front_obstacle:
                 velocity_update = self.update_velocity(0.0, 0.0)
 
             if velocity_update:

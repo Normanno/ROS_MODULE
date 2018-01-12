@@ -7,6 +7,7 @@ import time
 from xml.etree import ElementTree as ET
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
+from std_msgs.msg import Empty
 from base_class import Base
 from base_class import topics
 from sgr_project.msg import Personality
@@ -22,6 +23,7 @@ class ParametersPublisher(Base):
         "5": "Update angular velocity",
         "6": "Display angular velocity",
         "7": "Enable/Disable continuous movements",
+        "r": "Restart approaching behaviour (useful in case of continuous movement disabled)",
         "b": "Robot go back! (0.2 m/s for 1 second",
         "s": "Stop the robot (set angular and linear velocity to 0)",
         "h": "Display all options",
@@ -33,6 +35,7 @@ class ParametersPublisher(Base):
         self.personality_publisher = rospy.Publisher(base_topics["publishers"]["personality_ctrl"], Personality)
         self.velocity_publisher = rospy.Publisher(base_topics["publishers"]["velocity_ctrl"], Twist)
         self.adaptation_publisher = rospy.Publisher(base_topics["publishers"]["adaptation_ctrl"], Bool)
+        self.approach_publisher = rospy.Publisher(base_topics["publishers"]["apporach_ctrl"], Empty)
         self.options_functions = {
                 "1": self.update_personality,
                 "2": self.display_actual_personlity,
@@ -40,6 +43,8 @@ class ParametersPublisher(Base):
                 "4": self.display_actual_linear_velocity,
                 "5": self.update_angular_velocity,
                 "6": self.display_actual_angular_velocity,
+                "7": self.control_continuous_movement,
+                "r": self.restart_approach,
                 "b": self.go_back,
                 "s": self.stop_robot,
                 "h": self.display_options
@@ -98,6 +103,9 @@ class ParametersPublisher(Base):
                 exit_loop = True
             else:
                 print "Wrong input"
+
+    def restart_approach(self):
+        self.approach_publisher.publish(Empty())
 
     def publish_velocity(self):
         self.velocity_publisher.publish(self.velocity)
@@ -169,11 +177,16 @@ class ParametersPublisher(Base):
         print "***Updating personality parameters***"
         check_value = lambda x, y: x if y == '' else float(y)
         try:
-            extraversion_value = check_value( self.personality.extraversion, raw_input("Extraversion (actual " + str(self.personality.extraversion) + ") : "))
-            agreebleness_value = check_value( self.personality.agreebleness, raw_input("Agreebleness (actual " + str(self.personality.agreebleness) + ") : "))
-            concientiouness_value = check_value( self.personality.concientiouness, raw_input("Concientioness (actual " + str(self.personality.concientiouness) + ") : "))
-            neuroticism_value = check_value( self.personality.neuroticism, raw_input("Neuroticism (actual " + str(self.personality.neuroticism) + ") : "))
-            openness_value = check_value( self.personality.openness, raw_input("Openness (actual " + str(self.personality.openness) + ") : "))
+            extraversion_value = check_value(self.personality.extraversion,
+                                             raw_input("Extraversion (actual " + str(self.personality.extraversion) + ") : "))
+            agreebleness_value = check_value(self.personality.agreebleness,
+                                             raw_input("Agreebleness (actual " + str(self.personality.agreebleness) + ") : "))
+            concientiouness_value = check_value(self.personality.concientiouness,
+                                                raw_input("Concientioness (actual " + str(self.personality.concientiouness) + ") : "))
+            neuroticism_value = check_value(self.personality.neuroticism,
+                                            raw_input("Neuroticism (actual " + str(self.personality.neuroticism) + ") : "))
+            openness_value = check_value(self.personality.openness,
+                                         raw_input("Openness (actual " + str(self.personality.openness) + ") : "))
         except ValueError:
             print "ERROR: not a number!"
             return
