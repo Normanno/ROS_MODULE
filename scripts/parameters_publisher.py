@@ -6,6 +6,7 @@ import os
 import time
 from xml.etree import ElementTree as ET
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Bool
 from base_class import Base
 from base_class import topics
 from sgr_project.msg import Personality
@@ -20,6 +21,7 @@ class ParametersPublisher(Base):
         "4": "Display linear velocity",
         "5": "Update angular velocity",
         "6": "Display angular velocity",
+        "7": "Enable/Disable continuous movements",
         "b": "Robot go back! (0.2 m/s for 1 second",
         "s": "Stop the robot (set angular and linear velocity to 0)",
         "h": "Display all options",
@@ -30,6 +32,7 @@ class ParametersPublisher(Base):
         super(ParametersPublisher, self).__init__()
         self.personality_publisher = rospy.Publisher(base_topics["publishers"]["personality_ctrl"], Personality)
         self.velocity_publisher = rospy.Publisher(base_topics["publishers"]["velocity_ctrl"], Twist)
+        self.adaptation_publisher = rospy.Publisher(base_topics["publishers"]["adaptation_ctrl"], Bool)
         self.options_functions = {
                 "1": self.update_personality,
                 "2": self.display_actual_personlity,
@@ -100,7 +103,7 @@ class ParametersPublisher(Base):
         self.velocity_publisher.publish(self.velocity)
 
     def update_linear_velocity(self):
-        new_linear_velocity = input("Linear velocity (actual"+str(self.velocity.linear.x)+") :")
+        new_linear_velocity = input("Linear velocity (actual "+str(self.velocity.linear.x)+") :")
         try:
             new_linear_velocity_value = float(new_linear_velocity)
             self.velocity.linear.x = new_linear_velocity_value
@@ -113,7 +116,7 @@ class ParametersPublisher(Base):
         print "Actual linear velocity : " + str(self.velocity.linear.x)
 
     def update_angular_velocity(self):
-        new_angular_velocity = input("Angular velocity (actual"+str(self.velocity.angular.z)+") :")
+        new_angular_velocity = input("Angular velocity (actual "+str(self.velocity.angular.z)+") :")
         try:
             new_angular_velocity_value = float(new_angular_velocity)
             self.velocity.angular.z = new_angular_velocity_value
@@ -125,12 +128,30 @@ class ParametersPublisher(Base):
     def display_actual_angular_velocity(self):
         print "Actual angular velocity : " + str(self.velocity.angular.z)
 
+    def control_continuous_movement(self):
+        string_prompt = "Choices:\n(1)Enable continuous movement\n(2)Disable continuous movement\nChoice: "
+        choice = -1
+        msg = Bool()
+
+        try:
+            choice = int(raw_input(string_prompt))
+        except ValueError:
+            choice = 2
+
+        if choice == 1:
+            print 'enabling autonomous movement'
+            msg.data = True
+            self.adaptation_publisher.publish(msg)
+        elif choice == 2:
+            print 'disabling autonomous movement'
+            msg.data = False
+            self.adaptation_publisher.publish(msg)
+
     def go_back(self):
         self.velocity.linear.x = -0.2
         self.publish_velocity()
         time.sleep(1)
         self.stop_robot()
-
 
     def stop_robot(self):
         self.velocity.linear.x = 0.0
@@ -146,12 +167,13 @@ class ParametersPublisher(Base):
 
     def update_personality(self):
         print "***Updating personality parameters***"
+        check_value = lambda x, y: x if y == '' else float(y)
         try:
-            extraversion_value = float(input("Extraversion (actual " + str(self.personality.extraversion) + ") : "))
-            agreebleness_value = float(input("Agreebleness (actual " + str(self.personality.agreebleness) + ") : "))
-            concientiouness_value = float(input("Concientioness (actual " + str(self.personality.concientiouness) + ") : "))
-            neuroticism_value = float(input("Neuroticism (actual " + str(self.personality.neuroticism) + ") : "))
-            openness_value = float(input("Openness (actual " + str(self.personality.openness) + ") : "))
+            extraversion_value = check_value( self.personality.extraversion, raw_input("Extraversion (actual " + str(self.personality.extraversion) + ") : "))
+            agreebleness_value = check_value( self.personality.agreebleness, raw_input("Agreebleness (actual " + str(self.personality.agreebleness) + ") : "))
+            concientiouness_value = check_value( self.personality.concientiouness, raw_input("Concientioness (actual " + str(self.personality.concientiouness) + ") : "))
+            neuroticism_value = check_value( self.personality.neuroticism, raw_input("Neuroticism (actual " + str(self.personality.neuroticism) + ") : "))
+            openness_value = check_value( self.personality.openness, raw_input("Openness (actual " + str(self.personality.openness) + ") : "))
         except ValueError:
             print "ERROR: not a number!"
             return

@@ -1,8 +1,11 @@
 <stop_distance>
-    <minimum>
-        0.8
-    </minimum>
     <initial>
         0.8
     </initial>
+    <minimum>
+        0.8
+    </minimum>
+    <adaptation>
+        True
+    </adaptation>
 </stop_distance>

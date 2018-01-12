@@ -52,6 +52,7 @@ find_package(catkin REQUIRED COMPONENTS
    FILES
    SmartbandSensors.msg
    Personality.msg
+   StopDistance.msg
  )
 
 ## Generate services in the 'srv' folder

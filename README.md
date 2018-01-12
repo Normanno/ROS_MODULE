@@ -29,17 +29,15 @@ To allow the robot approach a human you need to run:
 roslaunch sgr_project approach.launch
 ~~~
 
-
 #Step 4: Send data from the smartband
 Download and in install the application at the [git repo](https://github.com/Normanno/WearSensorsApp.git) branch "ROS"
-<br /> 
-Then: <br />
+<br> 
+Then: <br>
 - (1) Install the application on both smartphone and smartwatch
 - (2) Insert host, port, and path of the smartband_receiver node.
 - (3) Toggle "Start ROS" (this will run a check on the paramaters) 
 - (4) Toggle "Activate" to start sending data to ROS
-
-
+<br>
 #Step 5 (Optional): Control client
 If you want to change parameters like linear/angular velocity or personality parameters just run the client with:
 ~~~

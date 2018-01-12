@@ -9,8 +9,8 @@ from base_class import Base
 from xml.etree import ElementTree as ET
 from sgr_project.msg import SmartbandSensors
 from sgr_project.msg import Personality
+from sgr_project.msg import StopDistance
 from std_msgs.msg import Bool
-from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist
 from base_class import topics as base_topics
 import matlab.engine
@@ -42,11 +42,15 @@ class StopDistanceCalculator(Base):
         self.new_velocity_data = False
         self.velocity = 0.0
         self.human_reached = False
+        self.adaptation_enabled = False
 
         self.minimum_stop_distance = 0.0
         self.stop_distance = 0.0
         self.smartband_detected = False
         self.motors_enabled = self.ros_aria_connected
+
+        self.adaptation_subscriber = rospy.Subscriber(topics['subscribers']['adaptation_ctrl'],
+                                                      Bool, self.process_adaptation, queue_size=1)
 
         self.smartband_subscriber = rospy.Subscriber(topics["subscribers"]["smartband"],
                                                      SmartbandSensors, self.process_smartband,
@@ -57,12 +61,16 @@ class StopDistanceCalculator(Base):
                                                        Personality, self.process_personality)
         self.human_reached_subscriber = rospy.Subscriber(topics["subscribers"]["human_reached"],
                                                          Bool, self.process_human_reached, queue_size=1)
-        self.velocity_subsciber = rospy.Subscriber(topics["subscribers"]["velocity"],
-                                                   Twist, self.process_velocity, queue_size=1)
+        self.velocity_subscriber = rospy.Subscriber(topics["subscribers"]["velocity"],
+                                                    Twist, self.process_velocity, queue_size=1)
+        #TODO verify double velocity reads
+        self.velocity_ctrl_subscriber = rospy.Subscriber(topics["subscribers"]["velocity_ctrl"],
+                                                         Twist, self.process_velocity, queue_size=1)
+
         self.smartband_state_publisher = rospy.Publisher(topics["publishers"]["smartband_state"],
                                                          Bool, queue_size=1)
         self.stop_distance_publisher = rospy.Publisher(topics["publishers"]["stop_distance"],
-                                                       Float32, queue_size=1)
+                                                       StopDistance, queue_size=1)
         self.init_parameters()
         rospy.init_node("stop_distance_calculator", anonymous=True)
 
@@ -90,8 +98,13 @@ class StopDistanceCalculator(Base):
                 self.stop_distance = float(stop_distance_root.find('initial').text)
             if stop_distance_root.find('minimum') is not None:
                 self.minimum_stop_distance = float(stop_distance_root.find('minimum').text)
+            if stop_distance_root.find('adaptation') is not None:
+                self.adaptation_enabled = bool(stop_distance_root.find('adaptation').text)
         else:
             print "Error : Can't find " + self.stop_distance_file_path + 'no such file or directory!'
+
+    def process_adaptation(self, adaptation_message):
+        self.adaptation_enabled = adaptation_message.data
 
     def process_motors(self, motors_message):
         self.motors_enabled = motors_message.data
@@ -114,6 +127,16 @@ class StopDistanceCalculator(Base):
     def process_personality(self, personality_msg):
         self.personality = personality_msg
         self.new_personality_data = True
+
+    def evaluate_delta(self, velocity, deceleration=0.5):
+        # distance traveled by the robot in 0.1 seconds (RosAria update frequency)
+        distance = velocity * 0.15
+        # Stop distance adaptation sum of :
+        # - uniform decelleration distance to stop = v^2 / 2*decelleration
+        # - robot walkable distance for late frame
+        delta = pow(velocity, 2) / (2 * deceleration)
+        delta += 2 * distance
+        return delta
 
     def smartband_sensors_to_values(self):
 
@@ -146,8 +169,18 @@ class StopDistanceCalculator(Base):
         else:
             self.stop_distance = self.minimum_stop_distance
 
-        msg = Float32()
-        msg.data = self.stop_distance
+        msg = StopDistance()
+        msg.distance = self.stop_distance
+        msg.delta = 0.0
+
+        if self.adaptation_enabled:
+            #the velocity is in values at the 7-th
+            #velocity = values[7]
+            velocity = self.velocity
+            ##TODO take this value with dynamic_reconfigure
+            deceleration = 0.5
+            msg.delta = self.evaluate_delta(velocity, deceleration)
+
         self.stop_distance_publisher.publish(msg)
 
     def check_new_data(self):

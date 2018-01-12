@@ -12,10 +12,12 @@ topics = {
         'approach': '/sgra/control/approach',
         'smartband_state': '/sgra/control/smartband_state',
         'stop_distance': '/sgra/stop_distance',
+        'stop_distance_adapted': '/sgra/stop_distance_adapted',
         'velocity': '/RosAria/cmd_vel',
         'motors': '/RosAria/motors_state',
         'sonar': '/RosAria/sonar',
         'velocity_ctrl': '/sgra/control/velocity',
+        'adaptation_ctrl': '/sgra/control/adaptation',
         'human_reached': '/sgra/human_reached'
     },
     'publishers': {
@@ -24,8 +26,10 @@ topics = {
         'approach': '/sgra/control/approach',
         'smartband_state': '/sgra/control/smartband_state',
         'stop_distance': '/sgra/stop_distance',
+        'stop_distance_adapted': '/sgra/stop_distance_adapted',
         'personality_ctrl': '/sgra/control/personality',
         'velocity_ctrl': '/sgra/control/velocity',
+        'adaptation_ctrl': '/sgra/control/adaptation',
         'human_reached': '/sgra/human_reached'
     }
 }
