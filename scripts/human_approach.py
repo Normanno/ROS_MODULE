@@ -13,11 +13,15 @@ from visualization_msgs.msg import MarkerArray
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from std_msgs.msg import Float32
+from std_msgs.msg import Int32
 from std_msgs.msg import Empty
 from std_srvs.srv import Empty
 
 from base_class import Base
 from sensor_msgs.msg import PointCloud
+
+#TODO ADD LOGGING FUNCTION
+
 
 class HumanApproach(Base):
 
@@ -38,10 +42,14 @@ class HumanApproach(Base):
                                                   Twist, queue_size=1)
         self.human_reached_publisher = rospy.Publisher(self.topics["publishers"]["human_reached"],
                                                        Bool, queue_size=10)
-        self.smartband_state_subscriber = rospy.Subscriber(topics["publishers"]["smartband_state"],
+        self.smartband_state_subscriber = rospy.Subscriber(topics["subscribers"]["smartband_state"],
                                                            Bool, self.process_smartband_state, queue_size=1)
-        self.stop_distance_subscriber = rospy.Subscriber(topics["publishers"]["stop_distance"],
+        self.stop_distance_subscriber = rospy.Subscriber(topics["subscribers"]["stop_distance"],
                                                          Float32, self.process_stop_distance, queue_size=1)
+
+        self.user_info_subscriber = rospy.Subscriber(base_topics["subscribers"]["user_info_ctrl"],
+                                                     Int32, self.process_user_info, queue_size=1)
+
         self.conf_dir = config
         if config[len(config) - 1] != '/':
             self.conf_dir += '/'
@@ -62,6 +70,9 @@ class HumanApproach(Base):
         self.approach_linear_velocity = 0.0
         self.approach_angular_velocity = 0.0
         self.actual_velocity = Twist()
+
+        self.uid = Int32()
+        self.uid = -1 #for generic tests
 
         self.stop_detected_time = 0.0
         self.null_velocity_time = 0.0
@@ -95,6 +106,9 @@ class HumanApproach(Base):
     def restart_approach(self, empty_msg):
         if self.human_reached:
             self.human_reached = False
+
+    def process_user_info(self, msg):
+        self.uid.data = msg.data
 
     def process_smartband_state(self, msg):
         if self.smartband_connected and not msg.data:
@@ -184,6 +198,8 @@ class HumanApproach(Base):
 
     def stop_there(self):
         return self.autonomous_movement() and not self.smartband_connected
+
+
 
     def approach(self):
         frequency = 60

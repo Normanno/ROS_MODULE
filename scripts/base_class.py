@@ -19,6 +19,7 @@ topics = {
         'velocity_ctrl': '/sgra/control/velocity',
         'adaptation_ctrl': '/sgra/control/adaptation',
         'approach_ctrl': '/sgra/control/restart_approach',
+        'user_info_ctrl': '/sgra/control/user_info',
         'human_reached': '/sgra/human_reached'
     },
     'publishers': {
@@ -32,6 +33,7 @@ topics = {
         'velocity_ctrl': '/sgra/control/velocity',
         'adaptation_ctrl': '/sgra/control/adaptation',
         'approach_ctrl': '/sgra/control/restart_approach',
+        'user_info_ctrl': '/sgra/control/user_info',
         'human_reached': '/sgra/human_reached'
     }
 }

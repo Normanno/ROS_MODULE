@@ -8,6 +8,7 @@ from xml.etree import ElementTree as ET
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from std_msgs.msg import Empty
+from std_msgs.msg import Int32
 from base_class import Base
 from base_class import topics
 from sgr_project.msg import Personality
@@ -36,6 +37,7 @@ class ParametersPublisher(Base):
         self.velocity_publisher = rospy.Publisher(base_topics["publishers"]["velocity_ctrl"], Twist)
         self.adaptation_publisher = rospy.Publisher(base_topics["publishers"]["adaptation_ctrl"], Bool)
         self.approach_publisher = rospy.Publisher(base_topics["publishers"]["apporach_ctrl"], Empty)
+        self.user_info_publisher = rospy.Publisher(base_topics["publishers"]["user_info_ctrl"], Int32)
         self.options_functions = {
                 "1": self.update_personality,
                 "2": self.display_actual_personlity,
@@ -55,6 +57,8 @@ class ParametersPublisher(Base):
 
         self.velocity = Twist()
         self.personality = Personality()
+        self.uid = Int32()
+        self.uid.data = -1
         self.init_parameters()
         rospy.init_node('parameters_publisher', anonymous=True)
 
@@ -173,29 +177,65 @@ class ParametersPublisher(Base):
         for k in keys:
             print "\t-" + k + " : " + ParametersPublisher.options.get(k)
 
+    def extract_data_from_csv(self, csv_path):
+        extraversion_v = 0.0
+        agreebleness_v = 0.0
+        concientiouness_v = 0.0
+        neuroticism_v = 0.0
+        openness_v = 0.0
+        counter = 0
+        csv_fields = list()
+        answers = list()
+        get_ans = lambda i: int(answers[i-1])
+        get_ans_r = lambda i: 6 - get_ans(i)
+        with open(csv_path, 'r') as csv_file:
+            for line in csv_file:
+                if counter != 0:
+                    csv_fields = str(line).replace('\n', '').strip().split(';')
+                counter += 1
+
+        #the first field is date&time the second is uid
+        answers = csv_fields[2:]
+        self.uid.data = int(csv_fields[1])
+        extraversion_v = get_ans(1) + get_ans_r(6) + get_ans(11) + get_ans(16) + get_ans_r(21) + get_ans(26) + get_ans_r(31) + get_ans(36)
+        agreebleness_v = get_ans_r(2) + get_ans(7) + get_ans_r(12) + get_ans(17) + get_ans(22) + get_ans_r(27) + get_ans(32) + get_ans_r(37) + get_ans(42)
+        concientiouness_v = get_ans(3) + get_ans_r(8) + get_ans(13) + get_ans_r(18) + get_ans_r(23) + get_ans(28) + get_ans(33) + get_ans(38) + get_ans_r(43)
+        neuroticism_v = get_ans(4) + get_ans_r(9) + get_ans(13) + get_ans(19) + get_ans_r(24) + get_ans(29) + get_ans(34) + get_ans(39)
+        openness_v = get_ans(5) + get_ans(10) + get_ans(15) + get_ans(20) + get_ans(25) + get_ans(30) + get_ans_r(35) + get_ans(40) + get_ans_r(41) + get_ans(44)
+
+        return extraversion_v, agreebleness_v, concientiouness_v, neuroticism_v, openness_v
+
     def update_personality(self):
         print "***Updating personality parameters***"
         check_value = lambda x, y: x if y == '' else float(y)
-        try:
-            extraversion_value = check_value(self.personality.extraversion,
-                                             raw_input("Extraversion (actual " + str(self.personality.extraversion) + ") : "))
-            agreebleness_value = check_value(self.personality.agreebleness,
-                                             raw_input("Agreebleness (actual " + str(self.personality.agreebleness) + ") : "))
-            concientiouness_value = check_value(self.personality.concientiouness,
-                                                raw_input("Concientioness (actual " + str(self.personality.concientiouness) + ") : "))
-            neuroticism_value = check_value(self.personality.neuroticism,
-                                            raw_input("Neuroticism (actual " + str(self.personality.neuroticism) + ") : "))
-            openness_value = check_value(self.personality.openness,
-                                         raw_input("Openness (actual " + str(self.personality.openness) + ") : "))
-        except ValueError:
-            print "ERROR: not a number!"
-            return
-        self.personality.extraversion = extraversion_value
-        self.personality.agreebleness = agreebleness_value
-        self.personality.concientiouness = concientiouness_value
-        self.personality.neuroticism = neuroticism_value
-        self.personality.openness = openness_value
+        u_choice = raw_input("Update (1 default):\n\t1)Insert manually\n\t2)Insert and calculate from csv\nChoice: ")
+        if u_choice != '' and u_choice == 2:
+            print 'csv'
+            extraversion_v, agreebleness_v, concientiouness_v, neuroticism_v, openness_v = self.extract_data_from_csv()
+        else:
+            try:
+                extraversion_v = check_value(self.personality.extraversion,
+                                                 raw_input("Extraversion (actual " + str(self.personality.extraversion) + ") : "))
+                agreebleness_v = check_value(self.personality.agreebleness,
+                                                 raw_input("Agreebleness (actual " + str(self.personality.agreebleness) + ") : "))
+                concientiouness_v = check_value(self.personality.concientiouness,
+                                                    raw_input("Concientioness (actual " + str(self.personality.concientiouness) + ") : "))
+                neuroticism_v = check_value(self.personality.neuroticism,
+                                                raw_input("Neuroticism (actual " + str(self.personality.neuroticism) + ") : "))
+                openness_v = check_value(self.personality.openness,
+                                             raw_input("Openness (actual " + str(self.personality.openness) + ") : "))
+                self.uid.data = -1
+            except ValueError:
+                print "ERROR: not a number!"
+                return
+
+        self.personality.extraversion = extraversion_v
+        self.personality.agreebleness = agreebleness_v
+        self.personality.concientiouness = concientiouness_v
+        self.personality.neuroticism = neuroticism_v
+        self.personality.openness = openness_v
         self.personality_publisher.publish(self.personality)
+        self.user_info_publisher.publish(self.uid)
         print "***Parameters successfully updated***"
 
     def display_actual_personlity(self):
