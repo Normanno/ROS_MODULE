@@ -36,7 +36,7 @@ class ParametersPublisher(Base):
         self.personality_publisher = rospy.Publisher(base_topics["publishers"]["personality_ctrl"], Personality)
         self.velocity_publisher = rospy.Publisher(base_topics["publishers"]["velocity_ctrl"], Twist)
         self.adaptation_publisher = rospy.Publisher(base_topics["publishers"]["adaptation_ctrl"], Bool)
-        self.approach_publisher = rospy.Publisher(base_topics["publishers"]["apporach_ctrl"], Empty)
+        self.approach_publisher = rospy.Publisher(base_topics["publishers"]["apporach_ctrl"], Bool)
         self.user_info_publisher = rospy.Publisher(base_topics["publishers"]["user_info_ctrl"], Int32)
         self.options_functions = {
                 "1": self.update_personality,
@@ -109,7 +109,9 @@ class ParametersPublisher(Base):
                 print "Wrong input"
 
     def restart_approach(self):
-        self.approach_publisher.publish(Empty())
+        msg = Bool()
+        msg.data = True
+        self.approach_publisher.publish()
 
     def publish_velocity(self):
         self.velocity_publisher.publish(self.velocity)
@@ -254,4 +256,3 @@ if __name__ == '__main__':
     personality_publisher = ParametersPublisher(topics, config_dir)
     personality_publisher.keyboard_input_loop()
     print "Good Bye!"
-    #TODO fix linear velocity input

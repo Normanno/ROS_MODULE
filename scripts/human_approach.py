@@ -14,8 +14,6 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from std_msgs.msg import Float32
 from std_msgs.msg import Int32
-from std_msgs.msg import Empty
-from std_srvs.srv import Empty
 
 from base_class import Base
 from sensor_msgs.msg import PointCloud
@@ -28,27 +26,6 @@ class HumanApproach(Base):
     def __init__(self, topics, config=''):
         super(HumanApproach, self).__init__()
         self.topics = topics
-        self.odometry_subscriber = rospy.Subscriber(self.topics["subscribers"]["odometry"],
-                                                    MarkerArray, self.process_odometry, queue_size=1)
-        self.sonar_subscriber = rospy.Subscriber(self.topics["subscribers"]["sonar"], PointCloud,
-                                                 self.process_sonar, queue_size=3)
-        self.velocity_ctrl_subscriber = rospy.Subscriber(topics["subscribers"]["velocity_ctrl"],
-                                                         Twist, self.process_velocity, queue_size=10)
-        self.adaptation_subscriber = rospy.Subscriber(topics['subscribers']['adaptation_ctrl'],
-                                                      Bool, self.process_adaptation, queue_size=1)
-        self.restart_subscriber = rospy.Subscriber(topics['subscribers']['approach_ctrl'],
-                                                   Empty, self.restart_approach(), queue_size=1)
-        self.velocity_publisher = rospy.Publisher(self.topics["publishers"]["velocity"],
-                                                  Twist, queue_size=1)
-        self.human_reached_publisher = rospy.Publisher(self.topics["publishers"]["human_reached"],
-                                                       Bool, queue_size=10)
-        self.smartband_state_subscriber = rospy.Subscriber(topics["subscribers"]["smartband_state"],
-                                                           Bool, self.process_smartband_state, queue_size=1)
-        self.stop_distance_subscriber = rospy.Subscriber(topics["subscribers"]["stop_distance"],
-                                                         Float32, self.process_stop_distance, queue_size=1)
-
-        self.user_info_subscriber = rospy.Subscriber(base_topics["subscribers"]["user_info_ctrl"],
-                                                     Int32, self.process_user_info, queue_size=1)
 
         self.conf_dir = config
         if config[len(config) - 1] != '/':
@@ -72,7 +49,7 @@ class HumanApproach(Base):
         self.actual_velocity = Twist()
 
         self.uid = Int32()
-        self.uid = -1 #for generic tests
+        self.uid = -1  # for generic tests
 
         self.stop_detected_time = 0.0
         self.null_velocity_time = 0.0
@@ -81,6 +58,28 @@ class HumanApproach(Base):
         self.autonomous = False
 
         self.init_parameters()
+
+        self.odometry_subscriber = rospy.Subscriber(self.topics["subscribers"]["odometry"],
+                                                    MarkerArray, self.process_odometry, queue_size=1)
+        self.sonar_subscriber = rospy.Subscriber(self.topics["subscribers"]["sonar"], PointCloud,
+                                                 self.process_sonar, queue_size=3)
+        self.velocity_ctrl_subscriber = rospy.Subscriber(topics["subscribers"]["velocity_ctrl"],
+                                                         Twist, self.process_velocity, queue_size=10)
+        self.adaptation_subscriber = rospy.Subscriber(topics['subscribers']['adaptation_ctrl'],
+                                                      Bool, self.process_adaptation, queue_size=1)
+        self.restart_subscriber = rospy.Subscriber(topics['subscribers']['approach_ctrl'],
+                                                   Bool, self.restart_approach, queue_size=1)
+        self.velocity_publisher = rospy.Publisher(self.topics["publishers"]["velocity"],
+                                                  Twist, queue_size=1)
+        self.human_reached_publisher = rospy.Publisher(self.topics["publishers"]["human_reached"],
+                                                       Bool, queue_size=10)
+        self.smartband_state_subscriber = rospy.Subscriber(topics["subscribers"]["smartband_state"],
+                                                           Bool, self.process_smartband_state, queue_size=1)
+        self.stop_distance_subscriber = rospy.Subscriber(topics["subscribers"]["stop_distance"],
+                                                         Float32, self.process_stop_distance, queue_size=1)
+
+        self.user_info_subscriber = rospy.Subscriber(base_topics["subscribers"]["user_info_ctrl"],
+                                                     Int32, self.process_user_info, queue_size=1)
 
         rospy.init_node("human_approach", anonymous=True)
 
@@ -103,8 +102,8 @@ class HumanApproach(Base):
         else:
             print "Error : Can't find " + self.stop_distance_file_path + 'no such file or directory!'
 
-    def restart_approach(self, empty_msg):
-        if self.human_reached:
+    def restart_approach(self, msg):
+        if bool(msg.data) and self.human_reached:
             self.human_reached = False
 
     def process_user_info(self, msg):
@@ -152,8 +151,8 @@ class HumanApproach(Base):
             self.pose["z"] = 0.0
 
     def process_sonar(self, sonar):
-        self.front_sonar["l"] = sonar[3].x
-        self.front_sonar["r"] = sonar[4].x
+        self.front_sonar["l"] = sonar.points[3].x
+        self.front_sonar["r"] = sonar.points[4].x
 
     def process_adaptation(self, adaptation):
         self.adaptation_enabled = adaptation.data
@@ -182,10 +181,14 @@ class HumanApproach(Base):
 
     def detect_front_obstacle(self):
         evaluate = lambda x: x < self.stop_distance + self.stop_distance_velocity_delta
-        self.front_obstacle = self.front_sonar["l"] is not None and self.front_sonar["r"] is not None and \
-                              (evaluate(self.front_sonar["l"]) or evaluate(self.front_sonar["r"]))
-        self.front_sonar["l"] = None
-        self.front_sonar["r"] = None
+        if self.front_sonar["l"] is not None and self.front_sonar["r"] is not None:
+            self.front_obstacle = evaluate(self.front_sonar["l"]) or evaluate(self.front_sonar["r"])
+            self.front_sonar["l"] = None
+            self.front_sonar["r"] = None
+            if self.front_obstacle:
+                print 'OSTACOLO'
+            else:
+                print 'no-ostacolo'
 
     def autonomous_movement(self):
         return self.autonomous or (not self.autonomous and not self.human_reached)
@@ -198,8 +201,6 @@ class HumanApproach(Base):
 
     def stop_there(self):
         return self.autonomous_movement() and not self.smartband_connected
-
-
 
     def approach(self):
         frequency = 60

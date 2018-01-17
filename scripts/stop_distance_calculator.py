@@ -134,7 +134,10 @@ class StopDistanceCalculator(Base):
         # Stop distance adaptation sum of :
         # - uniform decelleration distance to stop = v^2 / 2*decelleration
         # - robot walkable distance for late frame
-        delta = pow(velocity, 2) / (2 * deceleration)
+        delta = 0.0
+        if deceleration > 0.0:
+            delta += pow(velocity, 2) / (2 * deceleration)
+
         delta += 2 * distance
         return delta
 
