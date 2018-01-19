@@ -3,6 +3,7 @@
 import signal
 import sys
 import rosnode
+from logger import Logger
 
 topics = {
     'subscribers': {
@@ -46,6 +47,8 @@ class Base(object):
 
     def __init__(self):
         # SIGINT handler
+        self.log_active = True
+        self.logger = Logger("logs/")
         signal.signal(signal.SIGINT, self.signal_handler)
         nodes = rosnode.get_node_names()
         self.ros_aria_connected = True if '/RosAria' in nodes else False

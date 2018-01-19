@@ -1,3 +1,4 @@
+int32 uid
 float32 extraversion
 float32 agreebleness
 float32 concientiouness

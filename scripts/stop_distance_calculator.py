@@ -11,6 +11,7 @@ from sgr_project.msg import SmartbandSensors
 from sgr_project.msg import Personality
 from sgr_project.msg import StopDistance
 from std_msgs.msg import Bool
+from std_msgs.msg import Int32
 from geometry_msgs.msg import Twist
 from base_class import topics as base_topics
 import matlab.engine
@@ -49,6 +50,9 @@ class StopDistanceCalculator(Base):
         self.smartband_detected = False
         self.motors_enabled = self.ros_aria_connected
 
+        self.uid = Int32()
+        self.uid.data = -1
+
         self.adaptation_subscriber = rospy.Subscriber(topics['subscribers']['adaptation_ctrl'],
                                                       Bool, self.process_adaptation, queue_size=1)
 
@@ -71,6 +75,8 @@ class StopDistanceCalculator(Base):
                                                          Bool, queue_size=1)
         self.stop_distance_publisher = rospy.Publisher(topics["publishers"]["stop_distance"],
                                                        StopDistance, queue_size=1)
+        self.user_info_subscriber = rospy.Subscriber(base_topics["subscribers"]["user_info_ctrl"],
+                                                     Int32, self.process_user_info, queue_size=1)
         self.init_parameters()
         rospy.init_node("stop_distance_calculator", anonymous=True)
 
@@ -103,6 +109,9 @@ class StopDistanceCalculator(Base):
         else:
             print "Error : Can't find " + self.stop_distance_file_path + 'no such file or directory!'
 
+    def process_user_info(self, user_info_msg):
+        self.uid.data = user_info_msg.data
+
     def process_adaptation(self, adaptation_message):
         self.adaptation_enabled = adaptation_message.data
 
@@ -126,7 +135,18 @@ class StopDistanceCalculator(Base):
 
     def process_personality(self, personality_msg):
         self.personality = personality_msg
+        self.uid.data = personality_msg.uid
+        if self.log_active:
+            personality_dict = dict()
+            personality_dict["extraversion"] = personality_msg.extraversion
+            personality_dict["agreebleness"] = personality_msg.agreebleness
+            personality_dict["concientiouness"] = personality_msg.concientiouness
+            personality_dict["neuroticism"] = personality_msg.neuroticism
+            personality_dict["openness"] = personality_msg.openness
+            self.logger.init_user_logs(personality_msg.uid, personality_dict)
+
         self.new_personality_data = True
+
 
     def evaluate_delta(self, velocity, deceleration=0.5):
         # distance traveled by the robot in 0.1 seconds (RosAria update frequency)
@@ -142,7 +162,6 @@ class StopDistanceCalculator(Base):
         return delta
 
     def smartband_sensors_to_values(self):
-
         values = list()
         values.append(float(self.smartband_sensors.accx))
         values.append(float(self.smartband_sensors.accy))
@@ -164,7 +183,6 @@ class StopDistanceCalculator(Base):
         msg.data = self.smartband_detected
         self.smartband_state_publisher.publish(msg)
 
-
     def matlab_calculate_and_publish(self, values):
         new_stop_distance = engine.getStopDistanceSGRSVM(values, nargout=1)
 
@@ -180,10 +198,14 @@ class StopDistanceCalculator(Base):
         if self.adaptation_enabled:
             #the velocity is in values at the 7-th
             #velocity = values[7]
-            velocity = self.velocity
+            velocity = values[7]
             ##TODO take this value with dynamic_reconfigure
             deceleration = 0.5
             msg.delta = self.evaluate_delta(velocity, deceleration)
+
+        if self.log_active:
+            self.logger.log_smartband_data(self.uid.data, 'timestamp', values[:7], values[7],
+                                           msg.distance, msg.delta, deceleration, self.human_reached)
 
         self.stop_distance_publisher.publish(msg)
 
@@ -201,7 +223,7 @@ class StopDistanceCalculator(Base):
         while not rospy.is_shutdown():
             # if there is no data for one second, it is assumed that
             # the smartband is disconnected
-            if counter >= (rate) :
+            if counter >= rate :
                 if self.smartband_detected and not self.new_smartband_data:
                     print "** Smartband : disconnected **"
                     self.smartband_detected = False

@@ -256,14 +256,14 @@ class ParametersPublisher(Base):
             except ValueError:
                 print "ERROR: not a number!"
                 return
-
+        self.personality.uid = self.uid.data
         self.personality.extraversion = extraversion_v
         self.personality.agreebleness = agreebleness_v
         self.personality.concientiouness = concientiouness_v
         self.personality.neuroticism = neuroticism_v
         self.personality.openness = openness_v
         self.personality_publisher.publish(self.personality)
-        self.user_info_publisher.publish(self.uid)
+        #self.user_info_publisher.publish(self.uid)
         print "***Parameters successfully updated***"
 
     def display_actual_personlity(self):

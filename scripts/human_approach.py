@@ -228,6 +228,10 @@ class HumanApproach(Base):
         counter = 0
 
         self.print_state()
+        start_at_distance = 0.0
+        stop_at_distance = 0.0
+        start_at_time = 0.0
+        stop_at_time = 0.0
 
         while not rospy.is_shutdown():
             self.detect_front_obstacle()
@@ -247,13 +251,22 @@ class HumanApproach(Base):
                         print "**** Human detected: MOVING ****"
                         self.human_reached = False
                         velocity_update = self.update_velocity(self.approach_linear_velocity, self.actual_velocity.angular.z)
+                        start_at_distance = self.pose["x"]
+                        # %f = microsedonds
+                        start_at_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S.%f')
                 elif self.near_human() or self.front_obstacle:
                     if not self.human_reached:
                         print "**** Human detected: REACHED ****"
+                        stop_at_distance = self.pose["x"]
+                        stop_at_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S.%f')
                         stop_distance_log_msg = "x " + str(self.pose["x"]) + " - sd " + str(self.stop_distance) + " - " + str(self.stop_distance_velocity_delta)
                         rospy.loginfo("TIME [" + str() + "]" + stop_distance_log_msg)
                         self.human_reached = True
                         velocity_update = self.update_velocity(0.0, self.actual_velocity.angular.z)
+                        if self.log_active:
+                            self.logger.log_experiment(self.uid, start_at_time, stop_at_time, start_at_distance,
+                                                       stop_at_distance, self.stop_distance,
+                                                       self.stop_distance_velocity_delta)
                 # turn toward human
                 new_angular_velocity = min(1.0, self.pose["y"]) * self.approach_angular_velocity
                 velocity_update = velocity_update or self.update_velocity(self.actual_velocity.linear.x, new_angular_velocity)
