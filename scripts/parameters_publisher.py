@@ -24,7 +24,7 @@ class ParametersPublisher(Base):
         "5": "Update angular velocity",
         "6": "Display angular velocity",
         "7": "Enable/Disable continuous movements",
-        "r": "Restart approaching behaviour (useful in case of continuous movement disabled)",
+        "r": "Restart approaching behaviour (useful in case of \n\t\tcontinuous movement disabled)",
         "b": "Robot go back! (0.2 m/s for 1 second",
         "s": "Stop the robot (set angular and linear velocity to 0)",
         "h": "Display all options",
@@ -35,8 +35,10 @@ class ParametersPublisher(Base):
         super(ParametersPublisher, self).__init__()
         self.personality_publisher = rospy.Publisher(base_topics["publishers"]["personality_ctrl"], Personality)
         self.velocity_publisher = rospy.Publisher(base_topics["publishers"]["velocity_ctrl"], Twist)
+        #TODO add enable disable adaptations publisher
         self.adaptation_publisher = rospy.Publisher(base_topics["publishers"]["adaptation_ctrl"], Bool)
-        self.approach_publisher = rospy.Publisher(base_topics["publishers"]["apporach_ctrl"], Bool)
+        self.autonomous_publisher = rospy.Publisher(base_topics["publishers"]["autonomous_ctrl"], Bool)
+        self.approach_publisher = rospy.Publisher(base_topics["publishers"]["approach_ctrl"], Bool)
         self.user_info_publisher = rospy.Publisher(base_topics["publishers"]["user_info_ctrl"], Int32)
         self.options_functions = {
                 "1": self.update_personality,
@@ -46,6 +48,7 @@ class ParametersPublisher(Base):
                 "5": self.update_angular_velocity,
                 "6": self.display_actual_angular_velocity,
                 "7": self.control_continuous_movement,
+                "8": self.control_adaptation,
                 "r": self.restart_approach,
                 "b": self.go_back,
                 "s": self.stop_robot,
@@ -155,11 +158,34 @@ class ParametersPublisher(Base):
         if choice == 1:
             print 'enabling autonomous movement'
             msg.data = True
-            self.adaptation_publisher.publish(msg)
+            self.autonomous_publisher.publish(msg)
         elif choice == 2:
             print 'disabling autonomous movement'
             msg.data = False
+            self.autonomous_publisher.publish(msg)
+        else:
+            print "Wrong choice"
+
+    def control_adaptation(self):
+        string_prompt = "Choices:\n(1)Enable adaptation\n(2)Disable adaptation\nChoice: "
+        choice = -1
+        msg = Bool()
+
+        try:
+            choice = int(raw_input(string_prompt))
+        except ValueError:
+            choice = 2
+
+        if choice == 1:
+            print 'enabling adaptation'
+            msg.data = True
             self.adaptation_publisher.publish(msg)
+        elif choice == 2:
+            print 'disabling adaptation'
+            msg.data = False
+            self.adaptation_publisher.publish(msg)
+        else:
+            print "Wrong choice"
 
     def go_back(self):
         self.velocity.linear.x = -0.2

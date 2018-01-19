@@ -14,6 +14,7 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from std_msgs.msg import Float32
 from std_msgs.msg import Int32
+from sgr_project.msg import StopDistance
 
 from base_class import Base
 from sensor_msgs.msg import PointCloud
@@ -67,6 +68,8 @@ class HumanApproach(Base):
                                                          Twist, self.process_velocity, queue_size=10)
         self.adaptation_subscriber = rospy.Subscriber(topics['subscribers']['adaptation_ctrl'],
                                                       Bool, self.process_adaptation, queue_size=1)
+        self.autonomous_subscriber = rospy.Subscriber(topics['subscribers']['autonomous_ctrl'],
+                                                      Bool, self.process_autonomous, queue_size=1)
         self.restart_subscriber = rospy.Subscriber(topics['subscribers']['approach_ctrl'],
                                                    Bool, self.restart_approach, queue_size=1)
         self.velocity_publisher = rospy.Publisher(self.topics["publishers"]["velocity"],
@@ -76,7 +79,7 @@ class HumanApproach(Base):
         self.smartband_state_subscriber = rospy.Subscriber(topics["subscribers"]["smartband_state"],
                                                            Bool, self.process_smartband_state, queue_size=1)
         self.stop_distance_subscriber = rospy.Subscriber(topics["subscribers"]["stop_distance"],
-                                                         Float32, self.process_stop_distance, queue_size=1)
+                                                         StopDistance, self.process_stop_distance, queue_size=1)
 
         self.user_info_subscriber = rospy.Subscriber(base_topics["subscribers"]["user_info_ctrl"],
                                                      Int32, self.process_user_info, queue_size=1)
@@ -102,60 +105,65 @@ class HumanApproach(Base):
         else:
             print "Error : Can't find " + self.stop_distance_file_path + 'no such file or directory!'
 
-    def restart_approach(self, msg):
-        if bool(msg.data) and self.human_reached:
-            self.human_reached = False
+    def restart_approach(self, restart_msg):
+        #if bool(restart_msg.data) and self.human_reached:
+        #    self.human_reached = False
+        self.human_reached = False
 
-    def process_user_info(self, msg):
-        self.uid.data = msg.data
+    def process_user_info(self, user_info_msg):
+        self.uid.data = user_info_msg.data
 
-    def process_smartband_state(self, msg):
-        if self.smartband_connected and not msg.data:
+    def process_smartband_state(self, smartband_state_msg):
+        if self.smartband_connected and not smartband_state_msg.data:
             print "** Smartband : disconnected **"
-        elif not self.smartband_connected and msg.data:
+        elif not self.smartband_connected and smartband_state_msg.data:
             print "** Smartband : connected **"
-        self.smartband_connected = msg.data
+        self.smartband_connected = smartband_state_msg.data
 
-    def process_stop_distance(self, msg):
-        if self.stop_distance != msg.distance:
-            print 'stop_distance ' + str(self.stop_distance) + '->' + str(msg.data)
-        self.stop_distance = msg.distance
-        self.stop_distance_velocity_delta = msg.delta
+    def process_stop_distance(self, stop_distance_msg):
+        if self.stop_distance != stop_distance_msg.distance or self.stop_distance_velocity_delta != stop_distance_msg.delta:
+            print 'stop_distance ' + str(self.stop_distance) + '->' + str(stop_distance_msg.distance)
+            print 'delta '+str(self.stop_distance_velocity_delta) + '->' + str(stop_distance_msg.delta)
+        self.stop_distance = stop_distance_msg.distance
+        self.stop_distance_velocity_delta = stop_distance_msg.delta
 
     def process_velocity(self, velocity_msg):
         self.approach_linear_velocity = velocity_msg.linear.x
         self.approach_angular_velocity = velocity_msg.angular.z
         #TODO test correctness of this exclusion
-        #if not self.human_reached:
-            #self.actual_velocity.linear.x = self.approach_linear_velocity
-            #self.velocity_publisher.publish(self.actual_velocity)
+        if not self.human_reached:
+            self.actual_velocity.linear.x = self.approach_linear_velocity
+            self.velocity_publisher.publish(self.actual_velocity)
 
-    def process_odometry(self, odometry):
-        if self.humans < len(odometry.markers):
-            print "++ humans detected: " + str(self.humans) + "->" + str(len(odometry.markers)) + " ++"
-        elif self.humans > len(odometry.markers):
-            print "-- humans detected: " + str(self.humans) + "->" + str(len(odometry.markers)) + " --"
+    def process_odometry(self, odometry_msg):
+        if self.humans < len(odometry_msg.markers):
+            print "++ humans detected: " + str(self.humans) + "->" + str(len(odometry_msg.markers)) + " ++"
+        elif self.humans > len(odometry_msg.markers):
+            print "-- humans detected: " + str(self.humans) + "->" + str(len(odometry_msg.markers)) + " --"
 
-        self.humans = len(odometry.markers)
+        self.humans = len(odometry_msg.markers)
         if self.humans >= 1:
             self.human_detected = True
             # OpenPtrack publish distance in feet, we use meters
             # Axis as in rep 103, x->forward y->left z->up
-            self.pose["x"] = odometry.markers[0].pose.position.x
-            self.pose["y"] = odometry.markers[0].pose.position.y
-            self.pose["z"] = odometry.markers[0].pose.position.z
+            self.pose["x"] = odometry_msg.markers[0].pose.position.x
+            self.pose["y"] = odometry_msg.markers[0].pose.position.y
+            self.pose["z"] = odometry_msg.markers[0].pose.position.z
         else:
             self.human_detected = False
             self.pose["x"] = 0.0
             self.pose["y"] = 0.0
             self.pose["z"] = 0.0
 
-    def process_sonar(self, sonar):
-        self.front_sonar["l"] = sonar.points[3].x
-        self.front_sonar["r"] = sonar.points[4].x
+    def process_sonar(self, sonar_msg):
+        self.front_sonar["l"] = sonar_msg.points[3].x
+        self.front_sonar["r"] = sonar_msg.points[4].x
 
-    def process_adaptation(self, adaptation):
-        self.adaptation_enabled = adaptation.data
+    def process_autonomous(self, autonomous_msg):
+        self.autonomous = autonomous_msg.data
+
+    def process_adaptation(self, adaptation_msg):
+        self.adaptation_enabled = adaptation_msg.data
 
     def publish_human_reached(self):
         new_msg = Bool()
@@ -175,6 +183,20 @@ class HumanApproach(Base):
 
         return update
 
+    def print_state(self):
+        print "**********Actual State***********"
+        print "-RosAria : " + ("Connected " if self.ros_aria_connected else "Disconnected")
+        print "-Smartband : " + ("Connected " if self.smartband_connected else "Disconnected")
+        print "-Human Detected : " + ("Yes" if self.human_detected else "No")
+        print "-Human Reached : " + ("Yes" if self.human_reached else "No")
+        print "-Autonomous Movement : " + ("Enabled" if self.autonomous else "Disabled")
+        print "-Front Obstacle : " + ("Yes" if self.front_obstacle else "No")
+        print "-Stop Distance : " + str(self.stop_distance)
+        print "--Delta : " + str(self.stop_distance_velocity_delta)
+        print "-Actual Linear Velocity : " + str(self.actual_velocity.linear.x)
+        print "-Actual Angular Velocity : " + str(self.actual_velocity.angular.z)
+        print "********End Actual State*********"
+
     def near_human(self):
         # if the detected pose is range or the sonar detect an obstacle
         return self.pose["x"] <= (self.stop_distance + self.stop_distance_velocity_delta)
@@ -185,12 +207,9 @@ class HumanApproach(Base):
             self.front_obstacle = evaluate(self.front_sonar["l"]) or evaluate(self.front_sonar["r"])
             self.front_sonar["l"] = None
             self.front_sonar["r"] = None
-            if self.front_obstacle:
-                print 'OSTACOLO'
-            else:
-                print 'no-ostacolo'
 
     def autonomous_movement(self):
+        #print 'autonomous_movement ' + str(self.autonomous ) +' - human reached ' + str(self.human_reached)
         return self.autonomous or (not self.autonomous and not self.human_reached)
 
     def can_move(self):
@@ -207,9 +226,9 @@ class HumanApproach(Base):
         rate = rospy.Rate(frequency)
         velocity_update = False
         counter = 0
-        if not self.ros_aria_connected:
-            print '*** RosAria : disconnected ***'
-        print "** Smartband : disconnected **"
+
+        self.print_state()
+
         while not rospy.is_shutdown():
             self.detect_front_obstacle()
             if self.can_move():
@@ -218,6 +237,11 @@ class HumanApproach(Base):
                 counter += 1
                 # ROSAria mantain the velocity
                 # move toward human
+               # print 'front-obstacle '+ str(self.front_obstacle)
+               # print 'autonomous_movement ' + str(self.autonomous) + ' - human reached ' + str(self.human_reached)
+                print ' autonomous_movement_function ' + str(self.autonomous_movement())
+                print ' near-human ' + str(self.near_human())
+                self.print_state()
                 if not self.near_human() and not self.front_obstacle:
                     if self.human_reached:
                         print "**** Human detected: MOVING ****"

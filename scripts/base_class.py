@@ -18,6 +18,7 @@ topics = {
         'sonar': '/RosAria/sonar',
         'velocity_ctrl': '/sgra/control/velocity',
         'adaptation_ctrl': '/sgra/control/adaptation',
+        'autonomous_ctrl': '/sgra/control/autonomous',
         'approach_ctrl': '/sgra/control/restart_approach',
         'user_info_ctrl': '/sgra/control/user_info',
         'human_reached': '/sgra/human_reached'
@@ -32,6 +33,7 @@ topics = {
         'personality_ctrl': '/sgra/control/personality',
         'velocity_ctrl': '/sgra/control/velocity',
         'adaptation_ctrl': '/sgra/control/adaptation',
+        'autonomous_ctrl': '/sgra/control/autonomous',
         'approach_ctrl': '/sgra/control/restart_approach',
         'user_info_ctrl': '/sgra/control/user_info',
         'human_reached': '/sgra/human_reached'

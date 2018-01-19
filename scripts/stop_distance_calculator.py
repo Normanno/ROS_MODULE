@@ -164,6 +164,7 @@ class StopDistanceCalculator(Base):
         msg.data = self.smartband_detected
         self.smartband_state_publisher.publish(msg)
 
+
     def matlab_calculate_and_publish(self, values):
         new_stop_distance = engine.getStopDistanceSGRSVM(values, nargout=1)
 
