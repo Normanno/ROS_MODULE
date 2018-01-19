@@ -137,13 +137,7 @@ class StopDistanceCalculator(Base):
         self.personality = personality_msg
         self.uid.data = personality_msg.uid
         if self.log_active:
-            personality_dict = dict()
-            personality_dict["extraversion"] = personality_msg.extraversion
-            personality_dict["agreebleness"] = personality_msg.agreebleness
-            personality_dict["concientiouness"] = personality_msg.concientiouness
-            personality_dict["neuroticism"] = personality_msg.neuroticism
-            personality_dict["openness"] = personality_msg.openness
-            self.logger.init_user_logs(personality_msg.uid, personality_dict)
+           self.init_user_log(self.uid.data, personality_msg)
 
         self.new_personality_data = True
 
@@ -212,6 +206,15 @@ class StopDistanceCalculator(Base):
     def check_new_data(self):
         return self.new_personality_data or self.new_smartband_data or self.new_velocity_data
 
+    def init_user_log(self, uid, personality_msg):
+        personality_dict = dict()
+        personality_dict["extraversion"] = personality_msg.extraversion
+        personality_dict["agreebleness"] = personality_msg.agreebleness
+        personality_dict["concientiouness"] = personality_msg.concientiouness
+        personality_dict["neuroticism"] = personality_msg.neuroticism
+        personality_dict["openness"] = personality_msg.openness
+        self.logger.init_user_logs(uid, personality_dict)
+
     def calc_cycle(self):
         rate = 10
         ros_rate = rospy.Rate(10)
@@ -220,6 +223,10 @@ class StopDistanceCalculator(Base):
         print "starting calculator cycle"
         if not self.smartband_detected:
             print "** Smartband : disconnected **"
+
+        if self.uid.data == -1:
+            self.init_user_log(self.uid.data, self.personality)
+
         while not rospy.is_shutdown():
             # if there is no data for one second, it is assumed that
             # the smartband is disconnected

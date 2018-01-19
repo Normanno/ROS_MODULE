@@ -232,6 +232,7 @@ class HumanApproach(Base):
         stop_at_distance = 0.0
         start_at_time = 0.0
         stop_at_time = 0.0
+        start_session = True
 
         while not rospy.is_shutdown():
             self.detect_front_obstacle()
@@ -242,23 +243,29 @@ class HumanApproach(Base):
                 # ROSAria mantain the velocity
                 # move toward human
                # print 'front-obstacle '+ str(self.front_obstacle)
-               # print 'autonomous_movement ' + str(self.autonomous) + ' - human reached ' + str(self.human_reached)
+                #print 'autonomous_movement ' + str(self.autonomous) + ' - human reached ' + str(self.human_reached)
                 print ' autonomous_movement_function ' + str(self.autonomous_movement())
                 print ' near-human ' + str(self.near_human())
-                self.print_state()
+                print ' fron-obstacle ' +str(self.front_obstacle)
+                #self.print_state()
                 if not self.near_human() and not self.front_obstacle:
-                    if self.human_reached:
+                    print '----human-reached : '+str(self.human_reached)
+                    #if self.human_reached:
+                    if self.autonomous_movement():
                         print "**** Human detected: MOVING ****"
                         self.human_reached = False
                         velocity_update = self.update_velocity(self.approach_linear_velocity, self.actual_velocity.angular.z)
-                        start_at_distance = self.pose["x"]
-                        # %f = microsedonds
-                        start_at_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S.%f')
+                        if start_session:
+                            start_session = False
+                            start_at_distance = self.pose["x"]
+                            # %f = microsedonds
+                            start_at_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S.%f')
                 elif self.near_human() or self.front_obstacle:
                     if not self.human_reached:
                         print "**** Human detected: REACHED ****"
                         stop_at_distance = self.pose["x"]
                         stop_at_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S.%f')
+                        start_session = True
                         stop_distance_log_msg = "x " + str(self.pose["x"]) + " - sd " + str(self.stop_distance) + " - " + str(self.stop_distance_velocity_delta)
                         rospy.loginfo("TIME [" + str() + "]" + stop_distance_log_msg)
                         self.human_reached = True
@@ -266,7 +273,7 @@ class HumanApproach(Base):
                         if self.log_active:
                             self.logger.log_experiment(self.uid, start_at_time, stop_at_time, start_at_distance,
                                                        stop_at_distance, self.stop_distance,
-                                                       self.stop_distance_velocity_delta)
+                                                       self.stop_distance_velocity_delta, self.autonomous)
                 # turn toward human
                 new_angular_velocity = min(1.0, self.pose["y"]) * self.approach_angular_velocity
                 velocity_update = velocity_update or self.update_velocity(self.actual_velocity.linear.x, new_angular_velocity)

@@ -5,12 +5,12 @@ import os.path
 
 class Logger:
 
-    def __init__(self, log_dir='logs/'):
+    def __init__(self, log_dir='~/logs/'):
         self.log_directory = log_dir
 
         if log_dir[len(log_dir)-1:] != '/':
             self.log_directory += '/'
-
+        print 'current workdir ' + str(os.getcwd())
         if not os.path.exists(self.log_directory):
             os.makedirs(self.log_directory)
 
@@ -24,7 +24,6 @@ class Logger:
         return self.user_log_dir_path(uid) + str(uid) + '_band.csv'
 
     def init_user_logs(self, uid, personality):
-        print 'create_user log files'
         user_log_dir = self.user_log_dir_path(uid)
         if not os.path.exists(user_log_dir):
             os.makedirs(user_log_dir)
@@ -37,10 +36,11 @@ class Logger:
             tract = ET.SubElement(personality_tracts, str(key))
             tract.text = str(personality[key])
         sessions = ET.SubElement(root, "sessions")
-        sessions.text = "\n"
+        sessions.text = "\t"
         pretty_xml = minidom.parseString(ET.tostring(root)).toprettyxml(indent='\t')
         with open(self.user_session_log_file_path(uid), 'w+') as fx:
             fx.write(pretty_xml)
+        open(self.user_smartband_log_file_path(uid), 'w+').close()
 
     def log_experiment(self, uid, timestamp_start, timestamp_end, start_at, stop_at, stop_distance, delta, autonomous):
         """
@@ -66,9 +66,9 @@ class Logger:
         actual_session = ET.SubElement(sessions, 'session')
         stop_distance_el = ET.SubElement(actual_session, 'stop-distance')
         distance = ET.SubElement(stop_distance_el, 'computed-distance')
-        distance.text = stop_distance
+        distance.text = str(stop_distance)
         delta_el = ET.SubElement(stop_distance_el, 'computed-delta')
-        delta_el.text = delta
+        delta_el.text = str(delta)
         time_s = ET.SubElement(actual_session, 'starts-at-time')
         time_s.text = str(timestamp_start)
         time_e = ET.SubElement(actual_session, 'stops-at-time')
@@ -77,7 +77,7 @@ class Logger:
         dist_s.text = str(start_at)
         dist_e = ET.SubElement(actual_session, 'stops-at-distance')
         dist_e.text = str(stop_at)
-        pretty_xml = minidom.parse(ET.tostring(root)).toprettyxml(indent="\t")
+        pretty_xml = minidom.parseString(ET.tostring(root)).toprettyxml(indent="\t")
         with open(log_file, 'w') as fx:
             fx.write(pretty_xml)
 
