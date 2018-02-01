@@ -152,7 +152,7 @@ class StopDistanceCalculator(Base):
         if deceleration > 0.0:
             delta += pow(velocity, 2) / (2 * deceleration)
 
-        delta += 2 * distance
+        #delta += 2 * distance
         return delta
 
     def smartband_sensors_to_values(self):
@@ -188,7 +188,8 @@ class StopDistanceCalculator(Base):
         msg = StopDistance()
         msg.distance = self.stop_distance
         msg.delta = 0.0
-
+        print str(values)
+        print new_stop_distance
         if self.adaptation_enabled:
             #the velocity is in values at the 7-th
             #velocity = values[7]
@@ -230,7 +231,7 @@ class StopDistanceCalculator(Base):
         while not rospy.is_shutdown():
             # if there is no data for one second, it is assumed that
             # the smartband is disconnected
-            if counter >= rate :
+            if counter >= 2*rate :
                 if self.smartband_detected and not self.new_smartband_data:
                     print "** Smartband : disconnected **"
                     self.smartband_detected = False
@@ -238,7 +239,7 @@ class StopDistanceCalculator(Base):
             self.smartband_state_publish()
             # if the human is not at the computed stop distance and the motors are enabled
             # then calculate the stop distance
-            if not self.human_reached and self.motors_enabled and self.check_new_data():
+            if not self.human_reached and self.check_new_data():
                 # if there is some new data and is not the first start
                 if counter > 0 and self.smartband_detected:
                     print "** Smartband : connected **"

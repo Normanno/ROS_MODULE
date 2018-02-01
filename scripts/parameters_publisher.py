@@ -214,17 +214,18 @@ class ParametersPublisher(Base):
         counter = 0
         csv_fields = list()
         answers = list()
-        get_ans = lambda i: int(answers[i-1])
+        get_ans = lambda i: int(str(answers[i-1]).replace("\"", ""))
         get_ans_r = lambda i: 6 - get_ans(i)
         with open(csv_path, 'r') as csv_file:
             for line in csv_file:
-                if counter != 0:
-                    csv_fields = str(line).replace('\n', '').strip().split(';')
-                counter += 1
+                csv_fields = str(line).replace('\n', '').strip().split(',')
+                #if counter != 0:
+                #   csv_fields = str(line).replace('\n', '').strip().split(',')
+                #counter += 1
 
         #the first field is date&time the second is uid
         answers = csv_fields[2:]
-        self.uid.data = int(csv_fields[1])
+        self.uid.data = int(str(csv_fields[1]).replace("\"", ""))
         extraversion_v = get_ans(1) + get_ans_r(6) + get_ans(11) + get_ans(16) + get_ans_r(21) + get_ans(26) + get_ans_r(31) + get_ans(36)
         agreebleness_v = get_ans_r(2) + get_ans(7) + get_ans_r(12) + get_ans(17) + get_ans(22) + get_ans_r(27) + get_ans(32) + get_ans_r(37) + get_ans(42)
         concientiouness_v = get_ans(3) + get_ans_r(8) + get_ans(13) + get_ans_r(18) + get_ans_r(23) + get_ans(28) + get_ans(33) + get_ans(38) + get_ans_r(43)
@@ -237,9 +238,12 @@ class ParametersPublisher(Base):
         print "***Updating personality parameters***"
         check_value = lambda x, y: x if y == '' else float(y)
         u_choice = raw_input("Update (1 default):\n\t1)Insert manually\n\t2)Insert and calculate from csv\nChoice: ")
+        u_choice = int(u_choice)
+        print 'Choice : ' + str(u_choice)
         if u_choice != '' and u_choice == 2:
             print 'csv'
-            extraversion_v, agreebleness_v, concientiouness_v, neuroticism_v, openness_v = self.extract_data_from_csv()
+            csv_path = raw_input("Insert id.csv path :")
+            extraversion_v, agreebleness_v, concientiouness_v, neuroticism_v, openness_v = self.extract_data_from_csv(csv_path)
         else:
             try:
                 extraversion_v = check_value(self.personality.extraversion,
