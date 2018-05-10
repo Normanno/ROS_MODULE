@@ -5,6 +5,7 @@ import StringIO
 import os
 import sys
 import time
+from datetime import datetime
 from base_class import Base
 from xml.etree import ElementTree as ET
 from sgr_project.msg import SmartbandSensors
@@ -22,6 +23,10 @@ out = StringIO.StringIO()
 err = StringIO.StringIO()
 ret = engine.dec2hex(2 ** 60, stdout=out, stderr=err)
 
+#1: liing
+#2: sitting
+#3: standing
+#4: walking
 
 class StopDistanceCalculator(Base):
 
@@ -52,9 +57,13 @@ class StopDistanceCalculator(Base):
 
         self.uid = Int32()
         self.uid.data = -1
+        self.log_active = True
+        self.actual_activity = -1
 
         self.adaptation_subscriber = rospy.Subscriber(topics['subscribers']['adaptation_ctrl'],
                                                       Bool, self.process_adaptation, queue_size=1)
+        self.logging_ctrl_subscriber = rospy.Subscriber(topics['subscribers']['user_log_ctrl'],
+                                                      Bool, self.process_logging, queue_size=1)
 
         self.smartband_subscriber = rospy.Subscriber(topics["subscribers"]["smartband"],
                                                      SmartbandSensors, self.process_smartband,
@@ -77,6 +86,9 @@ class StopDistanceCalculator(Base):
                                                        StopDistance, queue_size=1)
         self.user_info_subscriber = rospy.Subscriber(base_topics["subscribers"]["user_info_ctrl"],
                                                      Int32, self.process_user_info, queue_size=1)
+        self.user_actual_activity_subscriber = rospy.Subscriber(base_topics["subscribers"]["user_activity_ctrl"],
+                                                                Int32, self.process_activity_info, queue_size=1)
+
         self.init_parameters()
         rospy.init_node("stop_distance_calculator", anonymous=True)
 
@@ -110,6 +122,7 @@ class StopDistanceCalculator(Base):
             print "Error : Can't find " + self.stop_distance_file_path + 'no such file or directory!'
 
     def process_user_info(self, user_info_msg):
+        print 'process user info '+str(user_info_msg.data)
         self.uid.data = user_info_msg.data
 
     def process_adaptation(self, adaptation_message):
@@ -141,6 +154,13 @@ class StopDistanceCalculator(Base):
 
         self.new_personality_data = True
 
+    def process_activity_info(self, activity_msg):
+        self.actual_activity = activity_msg.data
+        print "Actual activity: "+str(self.actual_activity)
+
+    def process_logging(self, logging_msg):
+        self.log_active = logging_msg.data
+        print "Log active: "+str(self.log_active)
 
     def evaluate_delta(self, velocity, deceleration=0.5):
         # distance traveled by the robot in 0.1 seconds (RosAria update frequency)
@@ -164,12 +184,15 @@ class StopDistanceCalculator(Base):
         values.append(float(self.smartband_sensors.gyroy))
         values.append(float(self.smartband_sensors.gyroz))
         values.append(float(self.smartband_sensors.hr))
-        values.append(float(self.velocity))
+        #TODO TESTING
+        #values.append(float(self.velocity))
+        values.append(1.0)# velocity index
         values.append(float(self.personality.extraversion))
         values.append(float(self.personality.agreebleness))
         values.append(float(self.personality.concientiouness))
         values.append(float(self.personality.neuroticism))
         values.append(float(self.personality.openness))
+
         return values
 
     def smartband_state_publish(self):
@@ -180,6 +203,8 @@ class StopDistanceCalculator(Base):
     def matlab_calculate_and_publish(self, values):
         new_stop_distance = engine.getStopDistanceSGRSVM(values, nargout=1)
 
+        activity = engine.getActivitySGRSVM(values[:8], nargout=1)
+        print "Activity : "+str(activity)
         if new_stop_distance >= self.minimum_stop_distance:
             self.stop_distance = new_stop_distance
         else:
@@ -188,20 +213,31 @@ class StopDistanceCalculator(Base):
         msg = StopDistance()
         msg.distance = self.stop_distance
         msg.delta = 0.0
-        print str(values)
-        print new_stop_distance
+        #"****RECEIVED VALUES****"
+        #print str(values)
+        #print "****END RECEIVED VALUES****"
+        #print new_stop_distance
         if self.adaptation_enabled:
             #the velocity is in values at the 7-th
             #velocity = values[7]
-            velocity = values[7]
+
+            if values[7] == 1.0:
+                velocity = 0.3
+            elif values[7] == 2.0:
+                velocity = 0.6
+            elif values[7] == 3.0:
+                velocity = 0.9
+            else:
+                velocity = 0.3
             ##TODO take this value with dynamic_reconfigure
             deceleration = 0.5
             msg.delta = self.evaluate_delta(velocity, deceleration)
 
         if self.log_active:
-            self.logger.log_smartband_data(self.uid.data, 'timestamp', values[:7], values[7],
-                                           msg.distance, msg.delta, deceleration, self.human_reached)
-
+            self.logger.log_smartband_data(self.uid.data,
+                                           datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S.%f'),
+                                           values[:7], values[7], msg.distance, msg.delta, deceleration,
+                                           self.actual_activity, activity, self.human_reached)
         self.stop_distance_publisher.publish(msg)
 
     def check_new_data(self):
@@ -249,6 +285,11 @@ class StopDistanceCalculator(Base):
                 self.new_personality_data = False
                 self.new_smartband_data = False
                 values = self.smartband_sensors_to_values()
+                values.append(float(self.personality.extraversion))
+                values.append(float(self.personality.agreebleness))
+                values.append(float(self.personality.concientiouness))
+                values.append(float(self.personality.neuroticism))
+                values.append(float(self.personality.openness))
                 self.matlab_calculate_and_publish(values)
 
             elif self.motors_enabled and last_smartband_check == self.smartband_data_last_timestamp:

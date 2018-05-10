@@ -22,6 +22,8 @@ topics = {
         'autonomous_ctrl': '/sgra/control/autonomous',
         'approach_ctrl': '/sgra/control/restart_approach',
         'user_info_ctrl': '/sgra/control/user_info',
+        'user_activity_ctrl': '/sgra/ctrl/user_actual_activity',
+        'user_log_ctrl': '/sgra/ctrl/logging_ctrl',
         'human_reached': '/sgra/human_reached'
     },
     'publishers': {
@@ -37,6 +39,8 @@ topics = {
         'autonomous_ctrl': '/sgra/control/autonomous',
         'approach_ctrl': '/sgra/control/restart_approach',
         'user_info_ctrl': '/sgra/control/user_info',
+        'user_activity_ctrl': '/sgra/ctrl/user_actual_activity',
+        'user_log_ctrl': '/sgra/ctrl/logging_ctrl',
         'human_reached': '/sgra/human_reached'
     }
 }
@@ -48,7 +52,7 @@ class Base(object):
     def __init__(self):
         # SIGINT handler
         self.log_active = True
-        self.logger = Logger("logs/")
+        self.logger = Logger("sgra_experiments_logs/")
         signal.signal(signal.SIGINT, self.signal_handler)
         nodes = rosnode.get_node_names()
         self.ros_aria_connected = True if '/RosAria' in nodes else False

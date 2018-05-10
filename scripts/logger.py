@@ -1,16 +1,21 @@
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
+import re
 import os.path
 
 
 class Logger:
 
-    def __init__(self, log_dir='~/logs/'):
-        self.log_directory = log_dir
+    def __init__(self, log_dir='sgra_experiments_logs/'):
+
+        self.user_home = os.path.expanduser("~")
+        self.log_directory = self.user_home + '/' + log_dir
 
         if log_dir[len(log_dir)-1:] != '/':
             self.log_directory += '/'
-        print 'current workdir ' + str(os.getcwd())
+
+        print 'current logdir ' + self.log_directory
+
         if not os.path.exists(self.log_directory):
             os.makedirs(self.log_directory)
 
@@ -36,17 +41,20 @@ class Logger:
             tract = ET.SubElement(personality_tracts, str(key))
             tract.text = str(personality[key])
         sessions = ET.SubElement(root, "sessions")
-        sessions.text = "\t"
+        #sessions.text = "\n"
         pretty_xml = minidom.parseString(ET.tostring(root)).toprettyxml(indent='\t')
+        #print 'pretty_xml_init :\n' + pretty_xml
         with open(self.user_session_log_file_path(uid), 'w+') as fx:
             fx.write(pretty_xml)
+            fx.flush()
         open(self.user_smartband_log_file_path(uid), 'w+').close()
 
-    def log_experiment(self, uid, timestamp_start, timestamp_end, start_at, stop_at, stop_distance, delta, autonomous):
+    def log_experiment(self, uid, real_activity, timestamp_start, timestamp_end, start_at, stop_at, stop_distance, delta, autonomous):
         """
         >log_experiment(self, uid, start_at, stop_at, stop_distance, delta, deceleration, autonomous)
          Write all the data on an xml representing the user
         :param uid:
+        :param real_activity
         :param timestamp_start
         :param timestamp_end
         :param start_at:
@@ -64,6 +72,8 @@ class Logger:
         root = tree.getroot()
         sessions = root.find('sessions')
         actual_session = ET.SubElement(sessions, 'session')
+        performed_activity = ET.SubElement(actual_session, 'activity')
+        performed_activity.text = str(real_activity)
         stop_distance_el = ET.SubElement(actual_session, 'stop-distance')
         distance = ET.SubElement(stop_distance_el, 'computed-distance')
         distance.text = str(stop_distance)
@@ -77,11 +87,14 @@ class Logger:
         dist_s.text = str(start_at)
         dist_e = ET.SubElement(actual_session, 'stops-at-distance')
         dist_e.text = str(stop_at)
-        pretty_xml = minidom.parseString(ET.tostring(root)).toprettyxml(indent="\t")
+        pretty_xml = minidom.parseString(ET.tostring(root)).toprettyxml()
+        pretty_xml = re.sub("\n+", "\n", pretty_xml)
+        #print 'pretty_xml_experiment :\n' + pretty_xml
         with open(log_file, 'w') as fx:
             fx.write(pretty_xml)
+            fx.flush()
 
-    def log_smartband_data(self, uid, timestamp, smartband_data, velocity, stop_distance, delta, deceleration, human_reached):
+    def log_smartband_data(self, uid, timestamp, smartband_data, velocity, stop_distance, delta, deceleration, real_activity, detected_activity, human_reached):
         """
         >log_smartband_data(self, uid, smartband_data, stop_distance, delta, msg):
          write all the data in csv format with timestamp
@@ -89,6 +102,8 @@ class Logger:
         :param smartband_data:
         :param stop_distance:
         :param delta:
+        :param real_activity
+        :param detected_activity
         :param human_reached:
         :return:
         """
@@ -96,10 +111,14 @@ class Logger:
         if not os.path.exists(log_file):
             print 'Error no log file for the uid: ' + str(uid)
             exit(1)
-        s_smartband_data = "" + ";"
+        s_smartband_data = ""
         for d in smartband_data:
             s_smartband_data += str(d) + ";"
 
+        print s_smartband_data + str(velocity)
+
         with open(log_file, 'a') as fc:
             fc.write(str(timestamp) + ";" + str(stop_distance) + ";" + str(delta) + ";" + s_smartband_data +
-                     str(velocity) + ";" + str(deceleration) + ";" + str(human_reached))
+                     str(velocity) + ";" + str(deceleration) + ";" + str(int(real_activity)) + ";" +
+                     str(int(detected_activity)) + ";" + str(human_reached)+";\n")
+            fc.flush()

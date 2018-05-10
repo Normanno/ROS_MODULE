@@ -15,6 +15,7 @@ from std_msgs.msg import Bool
 from std_msgs.msg import Float32
 from std_msgs.msg import Int32
 from sgr_project.msg import StopDistance
+from sgr_project.msg import Personality
 
 from base_class import Base
 from sensor_msgs.msg import PointCloud
@@ -49,8 +50,9 @@ class HumanApproach(Base):
         self.approach_angular_velocity = 0.0
         self.actual_velocity = Twist()
 
-        self.uid = Int32()
         self.uid = -1  # for generic tests
+
+        self.actual_activity = -1
 
         self.stop_detected_time = 0.0
         self.null_velocity_time = 0.0
@@ -83,6 +85,10 @@ class HumanApproach(Base):
 
         self.user_info_subscriber = rospy.Subscriber(base_topics["subscribers"]["user_info_ctrl"],
                                                      Int32, self.process_user_info, queue_size=1)
+        self.personality_info_subscriber = rospy.Subscriber(base_topics["subscribers"]["personality_ctrl"],
+                                                     Personality, self.process_personality_info, queue_size=1)
+        self.user_actual_activity_subscriber = rospy.Subscriber(base_topics["subscribers"]["user_activity_ctrl"],
+                                                                Int32, self.process_activity_info, queue_size=1)
 
         rospy.init_node("human_approach", anonymous=True)
 
@@ -111,14 +117,24 @@ class HumanApproach(Base):
         self.human_reached = False
 
     def process_user_info(self, user_info_msg):
-        self.uid.data = user_info_msg.data
+        self.uid = user_info_msg.data
+
+    def process_activity_info(self, activity_msg):
+        self.actual_activity = activity_msg.data
+
+    def process_personality_info(self, personality_info_msg):
+        print 'process_user_info' + str(personality_info_msg.uid)
+        self.uid = personality_info_msg.uid
 
     def process_smartband_state(self, smartband_state_msg):
+        '''
         if self.smartband_connected and not smartband_state_msg.data:
             print "** Smartband : disconnected **"
         elif not self.smartband_connected and smartband_state_msg.data:
             print "** Smartband : connected **"
         self.smartband_connected = smartband_state_msg.data
+        '''
+        self.smartband_connected = True
 
     def process_stop_distance(self, stop_distance_msg):
         if self.stop_distance != stop_distance_msg.distance or self.stop_distance_velocity_delta != stop_distance_msg.delta:
@@ -244,9 +260,9 @@ class HumanApproach(Base):
                 # move toward human
                # print 'front-obstacle '+ str(self.front_obstacle)
                 #print 'autonomous_movement ' + str(self.autonomous) + ' - human reached ' + str(self.human_reached)
-                print ' autonomous_movement_function ' + str(self.autonomous_movement())
-                print ' near-human ' + str(self.near_human())
-                print ' fron-obstacle ' +str(self.front_obstacle)
+               # print ' autonomous_movement_function ' + str(self.autonomous_movement())
+               # print ' near-human ' + str(self.near_human())
+               # print ' fron-obstacle ' +str(self.front_obstacle)
                 #self.print_state()
                 if not self.near_human() and not self.front_obstacle:
                     print '----human-reached : '+str(self.human_reached)
@@ -271,7 +287,8 @@ class HumanApproach(Base):
                         self.human_reached = True
                         velocity_update = self.update_velocity(0.0, self.actual_velocity.angular.z)
                         if self.log_active:
-                            self.logger.log_experiment(self.uid, start_at_time, stop_at_time, start_at_distance,
+                            self.logger.log_experiment(self.uid, self.actual_activity,
+                                                       start_at_time, stop_at_time, start_at_distance,
                                                        stop_at_distance, self.stop_distance,
                                                        self.stop_distance_velocity_delta, self.autonomous)
                 # turn toward human
@@ -283,6 +300,8 @@ class HumanApproach(Base):
             # if smartband is not connected
             elif self.stop_there() or self.front_obstacle:
                 velocity_update = self.update_velocity(0.0, 0.0)
+                #print 'Stopping : '
+                #self.print_state()
 
             if velocity_update:
                 self.velocity_publisher.publish(self.actual_velocity)
